@@ -11,6 +11,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Media.Devices;
 using Windows.Storage.Streams;
 
@@ -68,10 +69,29 @@ namespace Commissioner.App
 
                     Debug.WriteLine(section.Data.Length);
 
-                    if(section.Data.Length == 10)
+                    if (section.Data.Length == 10)
                     {
                         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress);
                         Debug.WriteLine($"BLEWATCHER Found: {device.Name}");
+
+                        var gatt = await device.GetGattServicesAsync();
+                        Debug.WriteLine($"{device.Name} Services: {gatt.Services.Count}, {gatt.Status}, {gatt.ProtocolError}");
+
+                        foreach (var service in gatt.Services)
+                        {
+                            Debug.WriteLine($"Service UUID {service.Uuid}");
+                        }
+
+                        var btpService = device.GetGattService(Guid.Parse("0000fff6-0000-1000-8000-00805f9b34fb"));
+
+                        await btpService.OpenAsync(GattSharingMode.SharedReadAndWrite);
+
+                        var btpCharacteristics = await btpService.GetCharacteristicsAsync();
+
+                        foreach (var characteristic in btpCharacteristics.Characteristics)
+                        {
+                            Debug.WriteLine($"Characteristic UUID: {characteristic.Uuid}");
+                        }
                     }
 
                     Debug.WriteLine(hexString);
