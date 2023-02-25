@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using Windows.Devices.Bluetooth;
@@ -92,6 +93,17 @@ namespace Commissioner.App
                         {
                             Debug.WriteLine($"Characteristic UUID: {characteristic.Uuid}");
                         }
+
+                        
+                        byte handshake = 0x00;
+
+                        byte[] handshakeBytes = new byte[] { handshake };
+
+                        await btpCharacteristics.Characteristics[0].WriteValueAsync(handshakeBytes.AsBuffer());
+
+                        btpCharacteristics.Characteristics[1].ValueChanged += MainWindow_ValueChanged;
+
+                        GattCommunicationStatus status = await btpCharacteristics.Characteristics[1].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate);
                     }
 
                     Debug.WriteLine(hexString);
@@ -99,33 +111,11 @@ namespace Commissioner.App
             }
 
             Debug.WriteLine("===============================");
+        }
 
-            // Just build up a list of devices. The payload should contain the discriminator we need. 
-            //
-            //    if(args.Advertisement.ManufacturerData?.Count > 0)
-            //    {
-            //        foreach(var data in args.Advertisement.ManufacturerData)
-            //        {
-            //            if (data.CompanyId == 65535 || data.CompanyId == 89)
-            //            {
-            //                if (data.Data.Length >= 10)
-            //                {
-            //                    Debug.WriteLine(data.CompanyId);
-
-            //                    DataReader dataReader = DataReader.FromBuffer(data.Data);
-            //                    byte[] bytes = new byte[data.Data.Length];
-            //                    dataReader.ReadBytes(bytes);
-
-            //                    string hexString = BitConverter.ToString(bytes);
-
-            //                    Debug.WriteLine(hexString);
-            //                    Debug.WriteLine(hexString.Replace('-', ' '));
-
-            //                    Debug.WriteLine("===============================");
-            //                }
-            //            }
-            //        }
-            //    }
+        private void MainWindow_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        {
+            throw new NotImplementedException();
         }
 
         private void myButton_Click(object sender, RoutedEventArgs e)
