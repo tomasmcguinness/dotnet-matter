@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Commissioner.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Commissioner.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
