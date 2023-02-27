@@ -1,12 +1,15 @@
 // Copyright (c) Microsoft Corporation and Contributors.
 // Licensed under the MIT License.
 
+using ColdBear.Climenole;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -56,66 +59,145 @@ namespace Commissioner.App
 
                     Debug.WriteLine(section.Data.Length);
 
+                    // This is a HACK!! We need to parse the discriminator out of this payload and see does it match what we're looking for!
+                    //
                     if (section.Data.Length == 10)
                     {
+                        // Stop listening to advertisments. We're not interested in anything else.
+                        //
                         _watcher.Stop();
 
                         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress);
-                        Debug.WriteLine($"BLEWATCHER Found: {device.Name}");
+                        Debug.WriteLine($"Device Found: {device.Name}");
 
-                        var gatt = await device.GetGattServicesAsync();
-                        Debug.WriteLine($"{device.Name} Services: {gatt.Services.Count}, {gatt.Status}, {gatt.ProtocolError}");
-
-                        foreach (var service in gatt.Services)
+                        try
                         {
-                            Debug.WriteLine($"Service UUID {service.Uuid}");
+                            var gatt = await device.GetGattServicesAsync();
+                            Debug.WriteLine($"{device.Name} Services: {gatt.Services.Count}, {gatt.Status}, {gatt.ProtocolError}");
+
+                            foreach (var service in gatt.Services)
+                            {
+                                Debug.WriteLine($"Service UUID {service.Uuid}");
+                            }
+
+                            var btpService = device.GetGattService(Guid.Parse("0000fff6-0000-1000-8000-00805f9b34fb"));
+
+                            await btpService.OpenAsync(GattSharingMode.SharedReadAndWrite);
+
+                            var btpCharacteristics = await btpService.GetCharacteristicsAsync();
+
+                            foreach (var characteristic in btpCharacteristics.Characteristics)
+                            {
+                                Debug.WriteLine($"Characteristic UUID: {characteristic.Uuid}");
+                            }
+
+                            BitArray handShake = new BitArray(8);
+                            handShake[1] = true;
+                            handShake[2] = true;
+                            handShake[5] = true;
+                            handShake[7] = true;
+
+                            byte[] handShakeBytes = new byte[9];
+
+                            handShake.CopyTo(handShakeBytes, 0);
+
+                            handShakeBytes[1] = 0x6C;
+                            handShakeBytes[2] = 0x04;
+
+                            handShakeBytes[7] = 23;
+                            handShakeBytes[8] = 244;
+
+                            GattCommunicationStatus status;
+
+                            status = await btpCharacteristics.Characteristics[0].WriteValueAsync(handShakeBytes.AsBuffer());
+
+                            if (status != GattCommunicationStatus.Success)
+                            {
+                                throw new InvalidOperationException();
+                            }
+
+                            var writeResult = await btpCharacteristics.Characteristics[1].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+
+                            btpCharacteristics.Characteristics[1].ValueChanged += MainWindow_ValueChanged;
+
+                            Debug.WriteLine(writeResult);
+
+                            // Assume we have a connection now. We don't really.
+                            // 
+
+                            // Begin PASE (Passcode Authenticated Session Establishment)
+                            //
+                            //
+                            // Send a PBKDFParamRequest
+                            //
+
+                            //bkdfparamreq -struct => STRUCTURE[tag - order]
+                            //{
+                            //  initiatorRandom[1] : OCTET STRING[length 32],
+                            //  initiatorSessionId[2] : UNSIGNED INTEGER[range 16 - bits],
+                            //  passcodeId[3] : UNSIGNED INTEGER[length 16 - bits],
+                            //  hasPBKDFParameters[4] : BOOLEAN,
+                            //  initiatorSEDParams[5, optional] : sed-parameter-struct
+                            //}
+
+                            MatterTLV pbkdfRequestTLV = new();
+
+                            pbkdfRequestTLV.AddOctetString(RandomString(32))
+                                .AddUnsignedTwoOctetInteger(11)
+                                .AddUnsignedOneOctetInteger(3840)
+                                .AddBooleanFalse();
+
+                            // Put this payload into a Matter Payload.
+
+                            // Put the matter payload into BTP payloads.
+                            //
+
+                            await WriteMatterMessageViaBle(pbkdfRequestTLV, btpCharacteristics.Characteristics[0]);
+                            //await btpCharacteristics.Characteristics[0].WriteValueAsync(handShakeBytes.AsBuffer());
                         }
-
-                        var btpService = device.GetGattService(Guid.Parse("0000fff6-0000-1000-8000-00805f9b34fb"));
-
-                        await btpService.OpenAsync(GattSharingMode.SharedReadAndWrite);
-
-                        var btpCharacteristics = await btpService.GetCharacteristicsAsync();
-
-                        foreach (var characteristic in btpCharacteristics.Characteristics)
+                        catch (Exception ex)
                         {
-                            Debug.WriteLine($"Characteristic UUID: {characteristic.Uuid}");
-                        }
-
-                        BitArray handShake = new BitArray(8);
-                        handShake[1] = true;
-                        handShake[2] = true;
-                        handShake[5] = true;
-                        handShake[7] = true;
-
-                        byte[] handShakeBytes = new byte[9];
-
-                        handShake.CopyTo(handShakeBytes, 0);
-
-                        handShakeBytes[1] = 0x6C;
-
-                        //BitArray version = new BitArray(8, false);
-                        //version[7] = true;
-
-                        //version.CopyTo(handShakeBytes, 2);
-
-                        handShakeBytes[8] = 244;
-
-                        await btpCharacteristics.Characteristics[0].WriteValueAsync(handShakeBytes.AsBuffer());
-
-                        btpCharacteristics.Characteristics[1].ValueChanged += MainWindow_ValueChanged;
-
-                        GattCommunicationStatus status = await btpCharacteristics.Characteristics[1].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate);
-
-                        if (status == GattCommunicationStatus.Success)
-                        {
-                            // We've done it!
+                            Debug.WriteLine(ex.ToString());
+                            device.Dispose();
                         }
                     }
 
                     Debug.WriteLine(hexString);
                 }
             }
+        }
+
+        private async Task WriteMatterMessageViaBle(MatterTLV pbkdfRequestTLV, GattCharacteristic gattCharacteristic)
+        {
+            // We need to create the matter messages from this payload.
+            //
+
+            await WriteBtpPackets(new byte[100], gattCharacteristic);
+        }
+
+        private async Task WriteBtpPackets(byte[] bytes, GattCharacteristic gattCharacteristic)
+        {
+            // 244 is the maximum size we agreed.
+            // Split the bytes into multiple payloads if required, using the beginning, end and sequenceNumbers.
+            //
+            BtpPacket packet = new(false, true, false, true, true, 0, 0, (short)bytes.Length, bytes);
+
+            GattCommunicationStatus status;
+
+            status = await gattCharacteristic.WriteValueAsync(packet.Bytes.AsBuffer());
+
+            if (status != GattCommunicationStatus.Success)
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+        private static Random random = new Random();
+
+        public static string RandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         private void MainWindow_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -125,7 +207,7 @@ namespace Commissioner.App
 
         private void myButton_Click(object sender, RoutedEventArgs e)
         {
-            // Parse this to manual pairing code into parts
+            // Parse this to manual pairing code and extract the discriminator and passcode
             //
             var viewModel = (MainWindowViewModel)RootGrid.DataContext;
 
@@ -172,16 +254,13 @@ namespace Commissioner.App
 
             // Start discovery looking for a device with the specified discriminator!
             //
+            _devices.Clear();
+            _watcher.Start();
+        }
 
-            //if (_watcher.Status == BluetoothLEAdvertisementWatcherStatus.Started)
-            //{
-            //    _devices.Clear();
-            //    _watcher.Stop();
-            //}
-            //else
-            //{
-            //    _watcher.Start();
-            //}
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }

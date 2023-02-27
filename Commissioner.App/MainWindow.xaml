@@ -13,6 +13,7 @@
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
             <TextBlock Text="{Binding ManualPairingCode}"></TextBlock>
             <Button Click="myButton_Click">Start Commissioning</Button>
+            <Button Click="Button_Click">Stop</Button>
         </StackPanel>
     </Grid>
     
