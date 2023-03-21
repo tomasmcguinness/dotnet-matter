@@ -17,9 +17,11 @@ namespace Commissioner.App
     public sealed partial class MainWindow : Window
     {
         private BluetoothLEAdvertisementWatcher _watcher;
-
+        private GattDeviceService _btpService;
         private short _currentDiscriminator;
         private int _currentSetupCode;
+
+        private const string MATTER_BLE_SERVICE_UUID = "0000fff6-0000-1000-8000-00805f9b34fb";
 
         public MainWindow()
         {
@@ -63,8 +65,6 @@ namespace Commissioner.App
 
                     var discriminator = BitConverter.ToInt16(discriminatorBytes, 0);
 
-                    string hexString = BitConverter.ToString(bytes);
-
                     if (discriminator == _currentDiscriminator)
                     {
                         // We have found the device we're interested in, so stop listening to advertisments.
@@ -86,16 +86,19 @@ namespace Commissioner.App
                                 Debug.WriteLine($"Service UUID {service.Uuid}");
                             }
 
-                            var btpService = device.GetGattService(Guid.Parse("0000fff6-0000-1000-8000-00805f9b34fb"));
+                            _btpService = device.GetGattService(Guid.Parse(MATTER_BLE_SERVICE_UUID));
 
-                            await btpService.OpenAsync(GattSharingMode.SharedReadAndWrite);
+                            var openStatus = await _btpService.OpenAsync(GattSharingMode.SharedReadAndWrite);
 
-                            var btpCharacteristics = await btpService.GetCharacteristicsAsync();
-
-                            foreach (var characteristic in btpCharacteristics.Characteristics)
+                            if(openStatus != GattOpenStatus.Success)
                             {
-                                Debug.WriteLine($"Characteristic UUID: {characteristic.Uuid}");
+                                _btpService = null;
+                                throw new InvalidOperationException();
                             }
+
+                            // Fetch all the characteristics. We're expecting at least two.
+                            //
+                            var btpCharacteristics = await _btpService.GetCharacteristicsAsync();
 
                             BitArray handShake = new BitArray(8);
                             handShake[1] = true;
@@ -110,32 +113,30 @@ namespace Commissioner.App
                             handShakeBytes[1] = 0x6C;
                             handShakeBytes[2] = 0x04;
 
-                            handShakeBytes[7] = 0;
+                            byte[] byteArray = BitConverter.GetBytes((short)23);
+                            byteArray.CopyTo(handShakeBytes, 6);
+
                             handShakeBytes[8] = 5;
 
-                            GattCommunicationStatus status;
+                            GattWriteResult writeResult;
 
-                            status = await btpCharacteristics.Characteristics[0].WriteValueAsync(handShakeBytes.AsBuffer());
+                            writeResult = await btpCharacteristics.Characteristics[0].WriteValueWithResultAsync(handShakeBytes.AsBuffer());
 
-                            if (status != GattCommunicationStatus.Success)
+                            if (writeResult.Status != GattCommunicationStatus.Success)
                             {
                                 throw new InvalidOperationException();
                             }
 
-                            var writeResult = await btpCharacteristics.Characteristics[1].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-
                             btpCharacteristics.Characteristics[1].ValueChanged += MainWindow_ValueChanged;
 
-                            Debug.WriteLine(writeResult);
+                            await Task.Delay(1000);
 
-                            // Assume we have a connection now. We don't really.
-                            // 
+                            writeResult = await btpCharacteristics.Characteristics[1].WriteClientCharacteristicConfigurationDescriptorWithResultAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate);
 
-                            // Begin PASE (Passcode Authenticated Session Establishment)
-                            //
-                            //
-                            // Send a PBKDFParamRequest
-                            //
+                            if (writeResult.Status != GattCommunicationStatus.Success)
+                            {
+                                throw new InvalidOperationException();
+                            }
 
                             //bkdfparamreq -struct => STRUCTURE[tag - order]
                             //{
@@ -146,19 +147,19 @@ namespace Commissioner.App
                             //  initiatorSEDParams[5, optional] : sed-parameter-struct
                             //}
 
-                            MatterTLV pbkdfRequestTLV = new();
+                            //MatterTLV pbkdfRequestTLV = new();
 
-                            pbkdfRequestTLV.AddOctetString(RandomString(32))
-                                .AddUnsignedTwoOctetInteger(11)
-                                .AddUnsignedOneOctetInteger(3840)
-                                .AddBooleanFalse();
+                            //pbkdfRequestTLV.AddOctetString(RandomString(32))
+                            //    .AddUnsignedTwoOctetInteger(11)
+                            //    .AddUnsignedOneOctetInteger(3840)
+                            //    .AddBooleanFalse();
 
                             // Put this payload into a Matter Payload.
 
                             // Put the matter payload into BTP payloads.
                             //
 
-                            await WriteMatterMessageViaBle(pbkdfRequestTLV, btpCharacteristics.Characteristics[0]);
+                            //await WriteMatterMessageViaBle(pbkdfRequestTLV, btpCharacteristics.Characteristics[0]);
                             //await btpCharacteristics.Characteristics[0].WriteValueAsync(handShakeBytes.AsBuffer());
                         }
                         catch (Exception ex)
@@ -167,8 +168,6 @@ namespace Commissioner.App
                             device.Dispose();
                         }
                     }
-
-                    Debug.WriteLine(hexString);
                 }
             }
         }
