@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation and Contributors.
-// Licensed under the MIT License.
-
 using ColdBear.Climenole;
 using Microsoft.UI.Xaml;
 using System;
@@ -38,6 +35,8 @@ namespace Commissioner.App
 
         private async void watcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
+            // If we have already received an advertisment from this device, just ignore it for now.
+            //
             if (_devices.Contains(args.BluetoothAddress))
             {
                 return;
@@ -47,7 +46,7 @@ namespace Commissioner.App
 
             foreach (var section in args.Advertisement.DataSections)
             {
-                // Check the service data.
+                // Check the service data. This is where the discriminator will be found.
                 //
                 if (section.DataType == 0x16)
                 {
@@ -55,24 +54,31 @@ namespace Commissioner.App
                     byte[] bytes = new byte[section.Data.Length];
                     dataReader.ReadBytes(bytes);
 
+                    // Bytes 3 and 4 will be the discriminator - from the Advertising PDU payload
+                    // They make up part of a 12 bit value.
+                    //
+                    var discriminatorBytes = new byte[2];
+
+                    Array.Copy(bytes, 3, discriminatorBytes, 0, 2);
+
+                    var discriminator = BitConverter.ToInt16(discriminatorBytes, 0);
+
                     string hexString = BitConverter.ToString(bytes);
 
-                    Debug.WriteLine(section.Data.Length);
-
-                    // This is a HACK!! We need to parse the discriminator out of this payload and see does it match what we're looking for!
-                    //
-                    if (section.Data.Length == 10)
+                    if (discriminator == _currentDiscriminator)
                     {
-                        // Stop listening to advertisments. We're not interested in anything else.
+                        // We have found the device we're interested in, so stop listening to advertisments.
                         //
                         _watcher.Stop();
 
                         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress);
+
                         Debug.WriteLine($"Device Found: {device.Name}");
 
                         try
                         {
                             var gatt = await device.GetGattServicesAsync();
+
                             Debug.WriteLine($"{device.Name} Services: {gatt.Services.Count}, {gatt.Status}, {gatt.ProtocolError}");
 
                             foreach (var service in gatt.Services)
@@ -104,8 +110,8 @@ namespace Commissioner.App
                             handShakeBytes[1] = 0x6C;
                             handShakeBytes[2] = 0x04;
 
-                            handShakeBytes[7] = 23;
-                            handShakeBytes[8] = 244;
+                            handShakeBytes[7] = 0;
+                            handShakeBytes[8] = 5;
 
                             GattCommunicationStatus status;
 
@@ -208,6 +214,7 @@ namespace Commissioner.App
         private void myButton_Click(object sender, RoutedEventArgs e)
         {
             // Parse this to manual pairing code and extract the discriminator and passcode
+            // We'll need this to correctly identify and connect to the device.
             //
             var viewModel = (MainWindowViewModel)RootGrid.DataContext;
 
@@ -230,7 +237,6 @@ namespace Commissioner.App
             discriminatorBitArray.CopyTo(discriminatorBytes, 0);
 
             _currentDiscriminator = BitConverter.ToInt16(discriminatorBytes, 0);
-            Debug.WriteLine($"Discriminator: {_currentDiscriminator}");
 
             var setupCodeBitArray = new BitArray(27);
 
@@ -251,16 +257,12 @@ namespace Commissioner.App
             _currentSetupCode = BitConverter.ToInt32(setupCodeBytes, 0);
 
             Debug.WriteLine($"Setup Code: {_currentSetupCode}");
+            Debug.WriteLine($"Discriminator: {_currentDiscriminator}");
 
             // Start discovery looking for a device with the specified discriminator!
             //
             _devices.Clear();
             _watcher.Start();
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-
         }
     }
 }
