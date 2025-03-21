@@ -1,20 +1,19 @@
 # dotnet-matter
-Perform Matter device commissioning and control using .Net
+
+A Matter controller written in .Net Core
 
 I'm not sure this can even be made to work, but I'd love to be able to perform some basic commissioning of Matter devices using .Net
 
-There are a few pieces to get working.
+There are a few milestones I want to accomplish.
 
-#1 using Bluetooth to connect to the device for commissioning.
-
-#2 Connect to the device
-
-#3 Connect it to a network (WiFi or Thread)
-
-#4 Find it after connection
-
-#5 Connect to the device
-
+- Parsing a setup code to extract the pin and discriminator
+- Finding a device using Bluetooth
+- Establishing a secure connection to that device
+- Adding it to a network (WiFi or Thread) - I feel Wifi is probably the easiest to start!
+- Sending simple commands to the device.
+- Binding the device to another device.
+- Unpairing with the device.
+ 
 ## Progress Log
 
 I'm going to try and keep a progress log going here. I've done quite a bit already at this point however, so those steps are lost to the mists of time.
@@ -23,8 +22,20 @@ The first step is decoding the commissioning code which contains the information
 
 The first step for my commissioner is to take the manual pairing code, parse it and then use Bluetooth to find the device using the Discriminator.
 
-## 21/03 
+> [!Note]
+> The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
+
+### 21/03/2024
+
 At this point, I have written some basic code that accepts a manual pairing code and parses it to exact the discriminator and setup code. It then starts watching for BLE devices. It parses the advertising payloads of the all the BLE devices it finds. The discriminator value is pulled out and compared to the one provided by the manual pairing code. This isn't correct to the specification, since I'm assuming that the 4 version bits are always zero.
+
+### 21/03/2025
+
+I picked this project up again as I've been playing a lot with ESP32 and Matter. A year later to the day.
+I have gotten Bluetooth scanning working, uwing the WinRT Bluetooth libraries. This will limit it to Windows 10 for now, but that's okay for now. I've written a blog post on this: https://tomasmcguinness.com/2025/03/21/building-a-net-matter-controller/
+I have also managed to establish a BTP (Bluetooth Transport Protocol) session, getting a handshake reponse from an ESP32-C6 (running the esp-matter Light example). 
+
+
 
 
 
