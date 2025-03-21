@@ -7,6 +7,8 @@ Controller controller = new Controller();
 
 Commissioner commissioner = new Commissioner();
 
-commissioner.StartBluetoothDiscovery();
+commissioner.CommissionDevice(3840);
+
+Console.WriteLine("Commissioning successful");
 
 Console.ReadKey();
