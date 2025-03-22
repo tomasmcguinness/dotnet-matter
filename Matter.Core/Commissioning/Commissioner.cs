@@ -1,9 +1,6 @@
 ﻿using Matter.Core.BTP;
-using System.Collections.Generic;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
 
 namespace Matter.Core.Commissioning
@@ -38,7 +35,7 @@ namespace Matter.Core.Commissioning
         }
 
         private BTPSession _btpSession;
-
+        private int _matterMessageCounter = 0;
 
         private async void BluetoothLEAdvertisementWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
@@ -83,7 +80,63 @@ namespace Matter.Core.Commissioning
 
                         _btpSession = new BTPSession(device);
 
-                        await _btpSession.InitiateAsync();
+                        var isConnected = await _btpSession.InitiateAsync();
+
+                        if (isConnected)
+                        {
+                            // Perform the PASE 
+                            //
+                            var PBKDFParamRequest = new MatterTLV();
+                            PBKDFParamRequest.AddStructure();
+                            PBKDFParamRequest.EndContainer();
+
+                            var applicationPayload = PBKDFParamRequest.GetBytes();
+
+                            // Let's build up the Protocol Header
+                            //
+                            var messagePayload = new byte[6 + applicationPayload.Length];
+                            messagePayload[0] = 0x01;// Protocol Header
+                            messagePayload[1] = 0x00;// Protocol OpCode
+                            messagePayload[2] = 0x00;// Exchange Id
+                            messagePayload[3] = 0x00;// Exchange Id
+                            messagePayload[4] = 0x00;// Protocol Id
+                            messagePayload[5] = 0x00;// Protocol Id
+
+                            foreach (var b in applicationPayload)
+                            {
+                                messagePayload.Append(b);
+                            }
+
+                            // The Message Header
+                            // The Session ID field SHALL be set to 0.
+                            // The Session Type bits of the Security Flags SHALL be set to 0.
+                            // In the PASE messages from the initiator, S Flag SHALL be set to 1 and DSIZ SHALL be set to 0.
+                            //
+                            // Message Flags (1byte) 0000100 0x04
+                            // SessionId (2bytes) 0x00
+                            // SecurityFlags (1byte) 0x00
+                            // MessageCount (4bytes) _matterMessageCounter
+                            // Message
+                            // MessageFooter (not needed for unsecured messages)
+
+
+                            var message = new byte[8 + messagePayload.Length];
+                            message[0] = 0x04;
+                            message[1] = 0x00;
+                            message[2] = 0x00;
+                            message[3] = 0x00;
+                            message[4] = 0x00;
+                            message[5] = 0x00;
+                            message[6] = 0x00;
+                            message[7] = 0x00;
+
+                            foreach (var b in messagePayload)
+                            {
+                                message.Append(b);
+                            }
+
+                            await _btpSession.SendAsync(message);
+                        }
 
                         _resetEvent.Set();
                     }

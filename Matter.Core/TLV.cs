@@ -6,6 +6,18 @@ namespace Matter.Core
     {
         private List<byte> _values = new();
 
+        public MatterTLV AddStructure()
+        {
+            _values.Add(0x15);
+            return this;
+        }
+
+        public MatterTLV EndContainer()
+        {
+            _values.Add(0x18);
+            return this;
+        }
+
         public MatterTLV AddBooleanTrue()
         {
             _values.Add(0x09);
@@ -38,6 +50,11 @@ namespace Matter.Core
             _values.Add(0x04);
             _values.AddRange(BitConverter.GetBytes(v));
             return this;
+        }
+
+        public byte[] GetBytes()
+        {
+            return _values.ToArray();
         }
     }
 }
