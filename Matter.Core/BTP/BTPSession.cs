@@ -20,7 +20,7 @@ namespace Matter.Core.BTP
         private uint _sentSequenceNumber = 0;
         private bool _isConnected;
 
-        private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(10);
+        private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
         public BTPSession(BluetoothLEDevice device)
         {
@@ -117,44 +117,29 @@ namespace Matter.Core.BTP
 
             await _readCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate);
 
-            var response = await WaitForResponseToCommandAsync();
+            var handshakeResponseFrame = await _incomingFrameChannel.Reader.ReadAsync();
 
+            Console.WriteLine("------------------------------------------");
             Console.WriteLine("HandShake Response Received!");
-            Console.WriteLine("------------------------------------------");
-            Console.WriteLine("Control Flags: {0:X}", response[0]);
-            Console.WriteLine("Management Opcode: {0:X}", response[1]);
-            Console.WriteLine("Version: {0}", response[2]);
-            Console.WriteLine("ATT Low Byte: {0}", response[3]);
-            Console.WriteLine("ATT High Byte: {0}", response[4]);
-            Console.WriteLine("Window Size: {0}", response[5]);
+            Console.WriteLine("Control Flags: {0:X}", handshakeResponseFrame.ControlFlags);
+            //Console.WriteLine("Management Opcode: {0:X}", handshakeResponseFrame.[1]);
+            Console.WriteLine("Version: {0}", handshakeResponseFrame.Version);
+            Console.WriteLine("ATT High Byte: {0}", handshakeResponseFrame.ATTSize);
+            Console.WriteLine("Window Size: {0}", handshakeResponseFrame.WindowSize);
             Console.WriteLine("------------------------------------------");
 
-            _currentAttSize = BitConverter.ToUInt16(response, 3);
-            //_serverWindowSize =  = 0;
-
-            // Stop notifying.
-            //
-            //await _readCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
+            _currentAttSize = handshakeResponseFrame.ATTSize;
 
             // If we have matching versions from the handshake, we're good to go!
             //
-            _isConnected = response[2] == 0x04;
+            _isConnected = handshakeResponseFrame.Version == 0x04;
 
             return _isConnected;
         }
 
-        private async Task<byte[]> WaitForResponseToCommandAsync()
-        {
-            await _responseReceivedSemaphore.WaitAsync();
-
-            return _btpResponse;
-        }
-
-        private byte[] _btpResponse;
-
         private async void ReadCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            Console.WriteLine("------------------------");
+            Console.WriteLine("------------------------------------------");
             Console.WriteLine("Characteristic Indicated");
 
             var readData = new byte[args.CharacteristicValue.Length];
@@ -163,8 +148,6 @@ namespace Matter.Core.BTP
             {
                 reader.ReadBytes(readData);
             }
-
-            var frame = new BTPFrame(readData);
 
             // Check the ControlFlags.
             //
@@ -203,13 +186,12 @@ namespace Matter.Core.BTP
                 _receivedSequenceCount = sequenceNumber;
             }
 
-            _btpResponse = [.. readData];
-
             // Write this frame to the channel.
             //
+            var frame = new BTPFrame(readData);
             await _incomingFrameChannel.Writer.WriteAsync(frame);
 
-            Console.WriteLine("------------------------");
+            Console.WriteLine("------------------------------------------");
 
             _responseReceivedSemaphore.Release();
         }

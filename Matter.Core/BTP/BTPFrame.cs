@@ -1,6 +1,4 @@
-﻿using System.Security.AccessControl;
-
-namespace Matter.Core.BTP
+﻿namespace Matter.Core.BTP
 {
     class BTPFrame
     {
@@ -13,11 +11,7 @@ namespace Matter.Core.BTP
         {
             ControlFlags = (BTPControlFlags)readData[0];
 
-            // If it's not a handshake result, log the contents.
-            //
-            // Print some of the common stuff.
-            //
-            Console.WriteLine("Control Flags {0}", Convert.ToString(readData[0], 2).PadLeft(8, '0'));
+            Console.WriteLine("Control Flags Byte: {0}", Convert.ToString(readData[0], 2).PadLeft(8, '0'));
 
             // Check the ControlFlags.
             //
@@ -27,6 +21,28 @@ namespace Matter.Core.BTP
             var isEndingSegment = ((byte)ControlFlags & 0x4) != 0;
             var isContinuingSegment = ((byte)ControlFlags & 0x2) != 0;
             var isBeginningSegment = ((byte)ControlFlags & 0x1) != 0;
+
+            if (isHandshake)
+            {
+                Version = readData[2];
+                ATTSize = BitConverter.ToUInt16(readData, 3);
+                WindowSize = readData[5];
+            }
+
+            var headerSize = 1;
+
+            if (isManagement)
+            {
+                headerSize += 1;
+            }
+
+            if (isBeginningSegment)
+            {
+                headerSize += 2;
+            }
+
+            // TODO Read the payload bytes.
+            //
         }
 
         public BTPControlFlags ControlFlags { get; set; }
@@ -38,6 +54,12 @@ namespace Matter.Core.BTP
         public uint AcknowledgeNumber { get; set; }
 
         public uint Sequence { get; set; }
+
+        public ushort Version { get; }
+
+        public ushort ATTSize { get; }
+
+        public ushort WindowSize { get; }
 
         internal void Serialize(MatterMessageWriter writer)
         {
