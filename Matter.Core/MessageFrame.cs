@@ -16,7 +16,7 @@ namespace Matter.Core
 
         public uint Counter { get; set; }
 
-        //public ulong SourceNodeID { get; set; }
+        public ulong SourceNodeID { get; set; }
 
         //public ulong DestinationID { get; set; }
 
@@ -28,6 +28,11 @@ namespace Matter.Core
             writer.Write(SessionID);
             writer.Write((byte)Security);
             writer.Write(Counter);
+
+            if ((Flags & MessageFlags.SourceNodeID) != 0)
+            {
+                writer.Write(SourceNodeID);
+            }
 
             MessagePayload.Serialize(writer);
         }

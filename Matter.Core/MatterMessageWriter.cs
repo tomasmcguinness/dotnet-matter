@@ -14,24 +14,29 @@
             _stream.WriteByte(@byte);
         }
 
-        internal void Write(ushort sessionID)
+        internal void Write(byte[] bytes)
         {
-            _stream.Write(BitConverter.GetBytes(sessionID));
+            _stream.Write(bytes);
         }
 
-        internal void Write(uint counter)
+        internal void Write(ushort value)
         {
-            _stream.Write(BitConverter.GetBytes(counter));
+            _stream.Write(BitConverter.GetBytes(value));
+        }
+
+        internal void Write(ulong value)
+        {
+            _stream.Write(BitConverter.GetBytes(value));
+        }
+
+        internal void Write(uint value)
+        {
+            _stream.Write(BitConverter.GetBytes(value));
         }
 
         internal byte[] GetBytes()
         {
-            return _stream.GetBuffer();
-        }
-
-        internal void Write(byte[] bytes)
-        {
-            _stream.Write(bytes);
+            return _stream.ToArray();
         }
 
         public long Length => _stream.Length;

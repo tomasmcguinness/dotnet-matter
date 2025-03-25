@@ -85,32 +85,35 @@ namespace Matter.Core.Commissioning
 
                         if (isConnected)
                         {
+                            Console.WriteLine("BTPSession has been established. Starting PASE Exchange....");
+
                             // We're going to Exchange messages, so we need an MessageExchange 
                             // to track it (4.10).
                             //
                             var exchangeId = (ushort)22; // TODO Make random!
                             var exchange = new MessageExchange(exchangeId, _btpSession);
 
-                            // Perform the PASE 
+                            // Perform the PASE exchange.
                             //
                             var PBKDFParamRequest = new MatterTLV();
                             PBKDFParamRequest.AddStructure();
 
                             // We need a control octet, the tag, the length and the value.
                             //
-                            // For a Octet String, 4 bytes, the first part is  10010
-                            // It's context specific, so bytes 678 are 001
-                            //
                             PBKDFParamRequest.AddOctetString4(1, RandomNumberGenerator.GetBytes(32));
-                            PBKDFParamRequest.AddBytes(1, RandomNumberGenerator.GetBytes(32), 32, 32);
+                            PBKDFParamRequest.AddUShort(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
+                            PBKDFParamRequest.AddUShort(3, 0);
+                            PBKDFParamRequest.AddBool(4, false);
                             PBKDFParamRequest.EndContainer();
-
 
 
                             // From Table 18. Secure Channel Protocol Opcodes
                             byte pbkdfpSecureOpCode = 0x20;
 
                             var messagePayload = new MessagePayload(PBKDFParamRequest, pbkdfpSecureOpCode);
+
+                            // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                            messagePayload.ProtocolId = 0x00; 
 
                             var messageFrame = new MessageFrame(messagePayload);
 

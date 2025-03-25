@@ -1,5 +1,5 @@
 ﻿using System.Runtime.InteropServices.WindowsRuntime;
-using System.Threading.Tasks;
+using System.Threading.Channels;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
@@ -19,6 +19,8 @@ namespace Matter.Core.BTP
         private uint _receivedSequenceCount = 0;
         private uint _sentSequenceNumber = 0;
         private bool _isConnected;
+
+        private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(10);
 
         public BTPSession(BluetoothLEDevice device)
         {
@@ -150,7 +152,7 @@ namespace Matter.Core.BTP
 
         private byte[] _btpResponse;
 
-        private void ReadCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        private async void ReadCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
             Console.WriteLine("------------------------");
             Console.WriteLine("Characteristic Indicated");
@@ -162,11 +164,7 @@ namespace Matter.Core.BTP
                 reader.ReadBytes(readData);
             }
 
-            // If it's not a handshake result, log the contents.
-            //
-            // Print some of the common stuff.
-            //
-            Console.WriteLine("Control Flags {0}", Convert.ToString(readData[0], 2).PadLeft(8, '0'));
+            var frame = new BTPFrame(readData);
 
             // Check the ControlFlags.
             //
@@ -207,12 +205,16 @@ namespace Matter.Core.BTP
 
             _btpResponse = [.. readData];
 
+            // Write this frame to the channel.
+            //
+            await _incomingFrameChannel.Writer.WriteAsync(frame);
+
             Console.WriteLine("------------------------");
 
             _responseReceivedSemaphore.Release();
         }
 
-        internal async Task<byte[]> SendAsync(MessageFrame messageFrame)
+        internal async Task SendAsync(MessageFrame messageFrame)
         {
             Console.WriteLine("Sending message over BTP Session");
 
@@ -234,7 +236,7 @@ namespace Matter.Core.BTP
                 {
                     btpFrame.Sequence = _sentSequenceNumber++;
 
-                    Console.WriteLine("Sending BTPFrame segment [{0}]...", _sentSequenceNumber);
+                    Console.WriteLine("Sending BTPFrame segment [{0}] [{1}]...", btpFrame.Sequence, Convert.ToString((byte)btpFrame.ControlFlags, 2).PadLeft(8, '0'));
 
                     var btpWriter = new MatterMessageWriter();
 
@@ -242,10 +244,10 @@ namespace Matter.Core.BTP
 
                     var writeResult = await _writeCharacteristic.WriteValueWithResultAsync(btpWriter.GetBytes().AsBuffer());
 
-                    var response = await WaitForResponseToCommandAsync(); 
+                    Console.WriteLine("Sent!");
                 }
 
-                return new byte[0];
+                Console.WriteLine("All segments successfully sent!");
             }
             finally
             {
@@ -271,15 +273,14 @@ namespace Matter.Core.BTP
                 //
                 // Depending on the type of message, we have different header lengths. E.g. for Beginning
                 // we must inlude the MessageLength in the payload. For Continuing, we don't!
-                // 
-                var headerLength = 0;
+                // We start with the ControlFlags and the sequence number.
+                var headerLength = 2; 
 
                 if (segments.Count == 0)
                 {
                     segment.ControlFlags = BTPControlFlags.Beginning;
-                    headerLength += 1;
                     segment.MessageLength = (ushort)messageBytes.Length;
-                    headerLength += 2;
+                    headerLength += 2; // Add two bytes to the header length to indicate we have the MessageLength.
                 }
                 else
                 {

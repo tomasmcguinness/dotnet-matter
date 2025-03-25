@@ -6,13 +6,15 @@ namespace Matter.Core
     {
         public MessagePayload(MatterTLV payload, byte opCode)
         {
-            OpCode = opCode;
+            ProtocolOpCode = opCode;
             Payload = payload;
         }
 
         public ExchangeFlags Flags { get; set; }
 
-        public byte OpCode { get; set; }
+        public byte ProtocolOpCode { get; set; }
+
+        public ushort ProtocolId { get; set; }
 
         public ushort ExchangeID { get; set; }
 
@@ -27,9 +29,11 @@ namespace Matter.Core
         internal void Serialize(MatterMessageWriter writer)
         {
             writer.Write((byte)Flags);
-            writer.Write(OpCode);
+            writer.Write(ProtocolOpCode);
             writer.Write(ExchangeID);
+            writer.Write(ProtocolId);
 
+            // Write the bytes of the payload!
             Payload.Serialize(writer);
         }
     }
