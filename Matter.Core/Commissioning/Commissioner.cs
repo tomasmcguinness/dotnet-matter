@@ -107,13 +107,15 @@ namespace Matter.Core.Commissioning
                             PBKDFParamRequest.EndContainer();
 
 
-                            // From Table 18. Secure Channel Protocol Opcodes
-                            byte pbkdfpSecureOpCode = 0x20;
 
-                            var messagePayload = new MessagePayload(PBKDFParamRequest, pbkdfpSecureOpCode);
+                            var messagePayload = new MessagePayload(PBKDFParamRequest);
+
+                            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
                             // Table 14. Protocol IDs for the Matter Standard Vendor ID
-                            messagePayload.ProtocolId = 0x00; 
+                            messagePayload.ProtocolId = 0x00;
+                            // From Table 18. Secure Channel Protocol Opcodes
+                            messagePayload.ProtocolOpCode = 0x20;
 
                             var messageFrame = new MessageFrame(messagePayload);
 
@@ -129,6 +131,12 @@ namespace Matter.Core.Commissioning
                             messageFrame.Flags |= MessageFlags.SourceNodeID;
                             messageFrame.SessionID = 0x00;
                             messageFrame.Security = 0x00;
+
+                            // Generate a random SourceNodeId
+                            //
+                            Random random = new Random();
+                            long myRandomNumber = random.NextInt64(1, long.MaxValue);
+                            messageFrame.SourceNodeID = (ulong)myRandomNumber;
 
                             await exchange.SendAsync(messageFrame);
                         }

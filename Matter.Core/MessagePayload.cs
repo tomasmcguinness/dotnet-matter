@@ -1,16 +1,13 @@
-﻿using System.Net.Sockets;
-
-namespace Matter.Core
+﻿namespace Matter.Core
 {
     public class MessagePayload
     {
-        public MessagePayload(MatterTLV payload, byte opCode)
+        public MessagePayload(MatterTLV payload)
         {
-            ProtocolOpCode = opCode;
             Payload = payload;
         }
 
-        public ExchangeFlags Flags { get; set; }
+        public ExchangeFlags ExchangeFlags { get; set; }
 
         public byte ProtocolOpCode { get; set; }
 
@@ -20,15 +17,13 @@ namespace Matter.Core
 
         //public ushort VendorID { get; set; }
 
-        //public ProtocolType Protocol { get; set; }
-
         //public uint AckCounter { get; set; }
 
         public MatterTLV Payload { get; set; }
 
         internal void Serialize(MatterMessageWriter writer)
         {
-            writer.Write((byte)Flags);
+            writer.Write((byte)ExchangeFlags);
             writer.Write(ProtocolOpCode);
             writer.Write(ExchangeID);
             writer.Write(ProtocolId);

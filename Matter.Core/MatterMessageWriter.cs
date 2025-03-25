@@ -36,9 +36,8 @@
 
         internal byte[] GetBytes()
         {
-            return _stream.ToArray();
+            var bytes = _stream.ToArray();
+            return bytes;
         }
-
-        public long Length => _stream.Length;
     }
 }

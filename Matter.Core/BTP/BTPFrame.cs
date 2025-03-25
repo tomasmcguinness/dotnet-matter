@@ -27,22 +27,6 @@ namespace Matter.Core.BTP
             var isEndingSegment = ((byte)ControlFlags & 0x4) != 0;
             var isContinuingSegment = ((byte)ControlFlags & 0x2) != 0;
             var isBeginningSegment = ((byte)ControlFlags & 0x1) != 0;
-
-            int byteIndex = 1;
-
-            if (isManagement)
-            {
-                Console.WriteLine("Management OpCode {0}", Convert.ToString(readData[byteIndex++], 2).PadLeft(8, '0'));
-            }
-
-            // The device is acknowledging a packet we send.
-            //
-            if (isAcknowledgement)
-            {
-                Console.WriteLine("Acknowledged Number {0}", readData[byteIndex++]);
-            }
-
-            Console.WriteLine("Beginning: {0}, Continuining: {1}, Ending: {2}", isBeginningSegment ? "1" : "0", isContinuingSegment ? "1" : "0", isBeginningSegment ? "1" : "0");
         }
 
         public BTPControlFlags ControlFlags { get; set; }
@@ -82,7 +66,5 @@ namespace Matter.Core.BTP
 
             writer.Write(Payload);
         }
-
-        //Console.WriteLine("Beginning: {0}, Continuining: {1}, Ending: {2}", isBeginningSegment? "1" : "0", isContinuingSegment? "1" : "0", isBeginningSegment? "1" : "0");
     }
 }

@@ -1,4 +1,7 @@
-﻿namespace Matter.Core
+﻿using System.Buffers.Binary;
+using System.Numerics;
+
+namespace Matter.Core
 {
     public class MatterTLV
     {
@@ -6,6 +9,7 @@
 
         public MatterTLV AddStructure()
         {
+            // Anonymous i.e. has no tag number.
             _values.Add(0x15);
             return this;
         }
@@ -24,7 +28,7 @@
             //
             _values.Add((0x1 << 5) | 0x12); // Octet String, 4-octet length
             _values.Add((byte)tagNumber);
-            _values.Add((byte)value.Length);
+            _values.AddRange(BitConverter.GetBytes((uint)value.Length));
             _values.AddRange(value);
             return this;
         }
@@ -43,18 +47,19 @@
 
         internal void Serialize(MatterMessageWriter writer)
         {
-            writer.Write(_values.ToArray());
+            var bytes = _values.ToArray();
+            writer.Write(bytes);
         }
 
         internal void AddBool(int tagNumber, bool v2)
         {
             if (v2)
             {
-                _values.Add((0x1 << 5) | 0x9); // Boolean TRUE
+                _values.Add((0x1 << 5) | 0x09); // Boolean TRUE
             }
             else
             {
-                _values.Add((0x1 << 5) | 0x8); // Boolean FALSE
+                _values.Add((0x1 << 5) | 0x08); // Boolean FALSE
             }
 
             _values.Add((byte)tagNumber);

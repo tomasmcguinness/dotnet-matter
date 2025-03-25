@@ -224,6 +224,10 @@ namespace Matter.Core.BTP
 
             var message = writer.GetBytes();
 
+            Console.WriteLine("MessageFrame is {0} bytes in length", message.Length);
+
+            Console.WriteLine(string.Join(" ", message.Select(x => x.ToString("X2"))));
+
             BTPFrame[] segments = GetSegments(message);
 
             Console.WriteLine("Incoming MessageFrame has been split to {0} BTPFrame segments", segments.Length);
@@ -274,7 +278,7 @@ namespace Matter.Core.BTP
                 // Depending on the type of message, we have different header lengths. E.g. for Beginning
                 // we must inlude the MessageLength in the payload. For Continuing, we don't!
                 // We start with the ControlFlags and the sequence number.
-                var headerLength = 2; 
+                var headerLength = 2;
 
                 if (segments.Count == 0)
                 {
