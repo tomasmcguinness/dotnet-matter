@@ -22,6 +22,8 @@ namespace Matter.Core.BTP
 
         private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
+        public Channel<MessageFrame> MessageFrameChannel = Channel.CreateBounded<MessageFrame>(5);
+
         public BTPSession(BluetoothLEDevice device)
         {
             _device = device;

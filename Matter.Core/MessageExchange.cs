@@ -21,5 +21,12 @@ namespace Matter.Core
 
             await _btpSession.SendAsync(message);
         }
+
+        internal async Task<MessageFrame> ReceiveAsync()
+        {
+            // Wait for the btpSession to publish a MessageFrame
+            //
+            return await _btpSession.MessageFrameChannel.Reader.ReadAsync();
+        }
     }
 }

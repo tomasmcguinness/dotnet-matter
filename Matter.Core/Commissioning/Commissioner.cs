@@ -106,8 +106,8 @@ namespace Matter.Core.Commissioning
                             PBKDFParamRequest.AddBool(4, false);
                             PBKDFParamRequest.EndContainer();
 
-
-
+                            // Construct a payload to carry this TLV message.
+                            //
                             var messagePayload = new MessagePayload(PBKDFParamRequest);
 
                             messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
@@ -139,6 +139,7 @@ namespace Matter.Core.Commissioning
                             messageFrame.SourceNodeID = (ulong)myRandomNumber;
 
                             await exchange.SendAsync(messageFrame);
+                            var responseMessageFrame = await exchange.ReceiveAsync();
                         }
 
                         _resetEvent.Set();
