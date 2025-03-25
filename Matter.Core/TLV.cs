@@ -30,11 +30,16 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddOctetString(string v)
+        public MatterTLV AddOctetString4(long tagNumber, byte[] value)
         {
-            _values.Add(0x10);
-            _values.Add((byte)v.Length);
-            _values.AddRange(Encoding.ASCII.GetBytes(v));
+            // This is a context type 1, shifted 5 bits and then OR'd with 12
+            // to produce a context tag for Octet String, 4 bytes
+            // 00110010
+            //
+            _values.Add((byte)(((byte)0x1 << 5) | 0x12));
+            _values.Add((byte)tagNumber);
+            _values.Add((byte)value.Length);
+            _values.AddRange(value);
             return this;
         }
 
@@ -55,6 +60,13 @@ namespace Matter.Core
         internal void Serialize(MatterMessageWriter writer)
         {
             writer.Write(_values.ToArray());
+        }
+
+        internal void AddBytes(int tagNumber, byte[] bytes, int v2, int v3)
+        {
+            _values.Add((byte)tagNumber);
+            _values.Add((byte)(uint)bytes.Length);
+            _values.AddRange(bytes);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Matter.Core.BTP;
+using System.Security.Cryptography;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Storage.Streams;
@@ -94,6 +95,14 @@ namespace Matter.Core.Commissioning
                             //
                             var PBKDFParamRequest = new MatterTLV();
                             PBKDFParamRequest.AddStructure();
+
+                            // We need a control octet, the tag, the length and the value.
+                            //
+                            // For a Octet String, 4 bytes, the first part is  10010
+                            // It's context specific, so bytes 678 are 001
+                            //
+                            PBKDFParamRequest.AddOctetString4(1, RandomNumberGenerator.GetBytes(32));
+                            PBKDFParamRequest.AddBytes(1, RandomNumberGenerator.GetBytes(32), 32, 32);
                             PBKDFParamRequest.EndContainer();
 
 
@@ -118,7 +127,7 @@ namespace Matter.Core.Commissioning
                             messageFrame.SessionID = 0x00;
                             messageFrame.Security = 0x00;
 
-                            //await exchange.SendAsync(messageFrame);
+                            await exchange.SendAsync(messageFrame);
                         }
 
                         _resetEvent.Set();

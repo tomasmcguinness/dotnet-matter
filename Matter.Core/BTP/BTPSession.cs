@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
@@ -7,21 +8,79 @@ namespace Matter.Core.BTP
 {
     class BTPSession
     {
-        private SemaphoreSlim _responseReceivedSemaphore = new SemaphoreSlim(0);
-        private BluetoothLEDevice _device;
+        private readonly SemaphoreSlim _responseReceivedSemaphore = new SemaphoreSlim(0);
+        private readonly BluetoothLEDevice _device;
+        private readonly Timer _acknowledgementTimer;
         private GattCharacteristic _readCharacteristic;
         private GattCharacteristic _writeCharacteristic;
+        private SemaphoreSlim _writeCharacteristicLock = new SemaphoreSlim(1, 1);
         private ushort _currentAttSize;
+        private uint _acknowledgedSequenceCount = 255;
+        private uint _receivedSequenceCount = 0;
+        private uint _sentSequenceNumber = 0;
+        private bool _isConnected;
 
         public BTPSession(BluetoothLEDevice device)
         {
             _device = device;
+            _device.ConnectionStatusChanged += _device_ConnectionStatusChanged;
+            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
+        }
+
+        private void _device_ConnectionStatusChanged(BluetoothLEDevice sender, object args)
+        {
+            // Update out internal flag in the event the other side disconnects.
+            //
+            Console.WriteLine("Device ConnectionStatus Changed: {0}", sender.ConnectionStatus);
+
+            if (_isConnected)
+            {
+                if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
+                {
+                    _isConnected = false;
+                }
+            }
+        }
+
+        private async void SendStandaloneAcknowledgement(object? state)
+        {
+            if (!_isConnected)
+            {
+                return;
+            }
+
+            await _writeCharacteristicLock.WaitAsync();
+
+            try
+            {
+                Console.WriteLine($"Sending Standalone Acknowledgement for {_receivedSequenceCount}");
+
+                BTPFrame acknowledgementFrame = new BTPFrame();
+                acknowledgementFrame.Sequence = _sentSequenceNumber++;
+                acknowledgementFrame.ControlFlags = BTPControlFlags.Acknowledge;
+
+                if (_acknowledgedSequenceCount != _receivedSequenceCount)
+                {
+                    _acknowledgedSequenceCount = _receivedSequenceCount;
+                    acknowledgementFrame.AcknowledgeNumber = _receivedSequenceCount;
+                }
+
+                var writer = new MatterMessageWriter();
+                acknowledgementFrame.Serialize(writer);
+
+                await _writeCharacteristic.WriteValueWithResultAsync(writer.GetBytes().AsBuffer());
+            }
+            finally
+            {
+                _writeCharacteristicLock.Release();
+            }
         }
 
         public async Task<bool> InitiateAsync()
         {
             GattDeviceServicesResult gattDeviceServicesResult = await _device.GetGattServicesAsync();
 
+            // This GUID is the 128 bit version of the 16 bit version
             GattDeviceService gattDeviceService = _device.GetGattService(Guid.Parse("0000FFF6-0000-1000-8000-00805F9B34FB"));
 
             GattCharacteristicsResult gattCharacteristicsResult = await gattDeviceService.GetCharacteristicsAsync();
@@ -35,15 +94,15 @@ namespace Matter.Core.BTP
             _readCharacteristic = gattCharacteristicsResult.Characteristics[1];
 
             var handshakePayload = new byte[9];
-            handshakePayload[0] = 0x65;
+            handshakePayload[0] = 0x65; // Handshake flag set.
             handshakePayload[1] = 0x6C;
             handshakePayload[2] = 0x04;
             handshakePayload[3] = 0x00;
             handshakePayload[4] = 0x00;
             handshakePayload[3] = 0x00;
             handshakePayload[6] = 0x00;
-            handshakePayload[6] = 0x00;
-            handshakePayload[6] = 244;
+            handshakePayload[7] = 0x00;
+            handshakePayload[8] = 0x02;// Only accept two packets at a time!
 
             IBuffer writer = handshakePayload.AsBuffer();
 
@@ -69,10 +128,17 @@ namespace Matter.Core.BTP
             Console.WriteLine("------------------------------------------");
 
             _currentAttSize = BitConverter.ToUInt16(response, 3);
+            //_serverWindowSize =  = 0;
+
+            // Stop notifying.
+            //
+            //await _readCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
 
             // If we have matching versions from the handshake, we're good to go!
             //
-            return response[2] == 0x04;
+            _isConnected = response[2] == 0x04;
+
+            return _isConnected;
         }
 
         private async Task<byte[]> WaitForResponseToCommandAsync()
@@ -86,6 +152,7 @@ namespace Matter.Core.BTP
 
         private void ReadCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
+            Console.WriteLine("------------------------");
             Console.WriteLine("Characteristic Indicated");
 
             var readData = new byte[args.CharacteristicValue.Length];
@@ -103,11 +170,11 @@ namespace Matter.Core.BTP
 
             // Check the ControlFlags.
             //
-            var isHandshake = (readData[0] & 0x1000000) != 0;
-            var isManagement = (readData[0] & 0x100000) != 0;
-            var isAcknowledgement = (readData[0] & 0x1000) != 0;
-            var isEndingSegment = (readData[0] & 0x100) != 0;
-            var isContinuingSegment = (readData[0] & 0x10) != 0;
+            var isHandshake = (readData[0] & 0x20) != 0;
+            var isManagement = (readData[0] & 0x10) != 0;
+            var isAcknowledgement = (readData[0] & 0x8) != 0;
+            var isEndingSegment = (readData[0] & 0x4) != 0;
+            var isContinuingSegment = (readData[0] & 0x2) != 0;
             var isBeginningSegment = (readData[0] & 0x1) != 0;
 
             int byteIndex = 1;
@@ -117,14 +184,30 @@ namespace Matter.Core.BTP
                 Console.WriteLine("Management OpCode {0}", Convert.ToString(readData[byteIndex++], 2).PadLeft(8, '0'));
             }
 
+            // The device is acknowledging a packet we send.
+            //
             if (isAcknowledgement)
             {
-                Console.WriteLine("Ack Number {0}", readData[byteIndex++]);
+                Console.WriteLine("Acknowledged Number {0}", readData[byteIndex++]);
             }
 
-            Console.WriteLine("Sequence Number {0}", readData[byteIndex++]);
+            Console.WriteLine("Beginning: {0}, Continuining: {1}, Ending: {2}", isBeginningSegment ? "1" : "0", isContinuingSegment ? "1" : "0", isBeginningSegment ? "1" : "0");
+
+            if (isHandshake)
+            {
+                _receivedSequenceCount = 0;
+            }
+            else
+            {
+                var sequenceNumber = readData[byteIndex++];
+                Console.WriteLine("Sequence Number {0}", sequenceNumber);
+
+                _receivedSequenceCount = sequenceNumber;
+            }
 
             _btpResponse = [.. readData];
+
+            Console.WriteLine("------------------------");
 
             _responseReceivedSemaphore.Release();
         }
@@ -141,23 +224,33 @@ namespace Matter.Core.BTP
 
             BTPFrame[] segments = GetSegments(message);
 
-            foreach (var btpFrame in segments)
+            Console.WriteLine("Incoming MessageFrame has been split to {0} BTPFrame segments", segments.Length);
+
+            await _writeCharacteristicLock.WaitAsync();
+
+            try
             {
-                Console.WriteLine("Sending BTPFrame segment...");
+                foreach (var btpFrame in segments)
+                {
+                    btpFrame.Sequence = _sentSequenceNumber++;
 
-                var btpWriter = new MatterMessageWriter();
+                    Console.WriteLine("Sending BTPFrame segment [{0}]...", _sentSequenceNumber);
 
-                btpFrame.Serialize(btpWriter);
+                    var btpWriter = new MatterMessageWriter();
 
-                var writeResult = await _writeCharacteristic.WriteValueWithResultAsync(btpWriter.GetBytes().AsBuffer());
-                var response = await WaitForResponseToCommandAsync();
+                    btpFrame.Serialize(btpWriter);
 
-                // Do something with the response?? 
-                // We might need to stitch the response messages back together???
-                //
+                    var writeResult = await _writeCharacteristic.WriteValueWithResultAsync(btpWriter.GetBytes().AsBuffer());
+
+                    var response = await WaitForResponseToCommandAsync(); 
+                }
+
+                return new byte[0];
             }
-
-            return new byte[0];
+            finally
+            {
+                _writeCharacteristicLock.Release();
+            }
         }
 
         private BTPFrame[] GetSegments(byte[] messageBytes)
@@ -196,7 +289,7 @@ namespace Matter.Core.BTP
                 // Work out how much of the messageBytes we're putting into the slice.
                 //
                 var howManyBytesLeftToSend = messageBytes.Length - messageBytesAddedToSegments;
-                var howMuchSpaceAvailableInBTPFrame = _currentAttSize - headerLength; 
+                var howMuchSpaceAvailableInBTPFrame = _currentAttSize - headerLength;
 
                 ushort segmentSize = (ushort)Math.Min(howManyBytesLeftToSend, howMuchSpaceAvailableInBTPFrame);
 
@@ -215,6 +308,11 @@ namespace Matter.Core.BTP
                 }
 
                 segment.Payload = segmentBytes;
+
+                segments.Add(segment);
+
+                messageBytesAddedToSegments += segmentSize;
+
             }
             while (messageBytesAddedToSegments < messageBytes.Length);
 

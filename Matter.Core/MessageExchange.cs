@@ -19,7 +19,7 @@ namespace Matter.Core
             message.Counter = GlobalCounter.Counter;
             message.MessagePayload.ExchangeID = _exchangeId;
 
-            _btpSession.SendAsync(message);
+            await _btpSession.SendAsync(message);
         }
     }
 }

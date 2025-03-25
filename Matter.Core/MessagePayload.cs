@@ -31,8 +31,6 @@ namespace Matter.Core
             writer.Write(ExchangeID);
 
             Payload.Serialize(writer);
-
-
         }
     }
 }
