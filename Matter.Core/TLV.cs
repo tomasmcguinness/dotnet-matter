@@ -52,9 +52,9 @@ namespace Matter.Core
             return this;
         }
 
-        public byte[] GetBytes()
+        internal void Serialize(MatterMessageWriter writer)
         {
-            return _values.ToArray();
+            writer.Write(_values.ToArray());
         }
     }
 }

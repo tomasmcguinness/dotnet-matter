@@ -12,7 +12,6 @@ namespace Matter.Core.BTP
         private GattCharacteristic _readCharacteristic;
         private GattCharacteristic _writeCharacteristic;
         private ushort _currentAttSize;
-        private byte _currentSequenceNumber = 0;
 
         public BTPSession(BluetoothLEDevice device)
         {
@@ -48,7 +47,7 @@ namespace Matter.Core.BTP
 
             IBuffer writer = handshakePayload.AsBuffer();
 
-            var writeResult = await _writeCharacteristic.WriteValueAsync(writer);
+            var writeResult = await _writeCharacteristic.WriteValueWithResultAsync(writer);
 
             // As soon as we're done writing, listen for changes from the read characteristic!
             // I don't know why it must be done in this order, but it must.
@@ -122,42 +121,104 @@ namespace Matter.Core.BTP
             {
                 Console.WriteLine("Ack Number {0}", readData[byteIndex++]);
             }
-            
+
             Console.WriteLine("Sequence Number {0}", readData[byteIndex++]);
-            //Console.WriteLine("Message Length {0}", BitConverter.ToUInt16(readData, 4));
 
             _btpResponse = [.. readData];
 
             _responseReceivedSemaphore.Release();
         }
 
-        internal async Task<byte[]> SendAsync(byte[] message)
+        internal async Task<byte[]> SendAsync(MessageFrame messageFrame)
         {
             Console.WriteLine("Sending message over BTP Session");
 
-            // We need to check the size of this message array and break it up into 
-            // multiple BTPFrames.
-            //
-            if (message.Length > _currentAttSize)
+            var writer = new MatterMessageWriter();
+
+            messageFrame.Serialize(writer);
+
+            var message = writer.GetBytes();
+
+            BTPFrame[] segments = GetSegments(message);
+
+            foreach (var btpFrame in segments)
             {
-                Console.WriteLine("Message being sent over BTP is larger than ATT Size");
+                Console.WriteLine("Sending BTPFrame segment...");
+
+                var btpWriter = new MatterMessageWriter();
+
+                btpFrame.Serialize(btpWriter);
+
+                var writeResult = await _writeCharacteristic.WriteValueWithResultAsync(btpWriter.GetBytes().AsBuffer());
+                var response = await WaitForResponseToCommandAsync();
+
+                // Do something with the response?? 
+                // We might need to stitch the response messages back together???
+                //
             }
 
-            var btpPayload = new byte[6 + message.Length];
-            btpPayload[0] = 0x20; // Management flag set.
-            btpPayload[1] = 0x6C;
-            btpPayload[2] = 0x04;
-            btpPayload[3] = 0x00;
-            btpPayload[4] = (byte)message.Length;
+            return new byte[0];
+        }
 
-            IBuffer writer = message.AsBuffer();
-            var writeResult = await _writeCharacteristic.WriteValueAsync(writer);
+        private BTPFrame[] GetSegments(byte[] messageBytes)
+        {
+            // We might need multiple frames to transport this message.
+            //
+            var segments = new List<BTPFrame>();
+            var messageBytesAddedToSegments = 0;
 
-            _currentSequenceNumber++;
+            do
+            {
+                BTPFrame segment = new BTPFrame();
 
-            var response = await WaitForResponseToCommandAsync();
+                // If we have not created the first segment, this one will
+                // have the Beginning control flag. It will also include the MessageLength.
+                //
+                // If we already have segments, set Continuing flag
+                //
+                // Depending on the type of message, we have different header lengths. E.g. for Beginning
+                // we must inlude the MessageLength in the payload. For Continuing, we don't!
+                // 
+                var headerLength = 0;
 
-            return response;
+                if (segments.Count == 0)
+                {
+                    segment.ControlFlags = BTPControlFlags.Beginning;
+                    headerLength += 1;
+                    segment.MessageLength = (ushort)messageBytes.Length;
+                    headerLength += 2;
+                }
+                else
+                {
+                    segment.ControlFlags = BTPControlFlags.Continuing;
+                }
+
+                // Work out how much of the messageBytes we're putting into the slice.
+                //
+                var howManyBytesLeftToSend = messageBytes.Length - messageBytesAddedToSegments;
+                var howMuchSpaceAvailableInBTPFrame = _currentAttSize - headerLength; 
+
+                ushort segmentSize = (ushort)Math.Min(howManyBytesLeftToSend, howMuchSpaceAvailableInBTPFrame);
+
+                var segmentBytes = new byte[segmentSize];
+
+                // Copy from our messageBytes into segmentBytes
+                //
+                System.Buffer.BlockCopy(messageBytes, messageBytesAddedToSegments, segmentBytes, 0, segmentBytes.Length);
+
+                // If the current segmentSize + all the bytes already added equals the total,
+                // we send the Ending flag.
+                //
+                if (segmentSize + messageBytesAddedToSegments == messageBytes.Length)
+                {
+                    segment.ControlFlags |= BTPControlFlags.Ending;
+                }
+
+                segment.Payload = segmentBytes;
+            }
+            while (messageBytesAddedToSegments < messageBytes.Length);
+
+            return segments.ToArray();
         }
     }
 }
