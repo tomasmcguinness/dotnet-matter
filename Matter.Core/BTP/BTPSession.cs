@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices.WindowsRuntime;
+﻿using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Channels;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -8,7 +9,6 @@ namespace Matter.Core.BTP
 {
     class BTPSession
     {
-        private readonly SemaphoreSlim _responseReceivedSemaphore = new SemaphoreSlim(0);
         private readonly BluetoothLEDevice _device;
         private readonly Timer _acknowledgementTimer;
         private GattCharacteristic _readCharacteristic;
@@ -29,6 +29,64 @@ namespace Matter.Core.BTP
             _device = device;
             _device.ConnectionStatusChanged += _device_ConnectionStatusChanged;
             _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
+        }
+
+        public async Task ListenForResponses()
+        {
+            try
+            {
+               var segments = new List<BTPFrame>();
+
+                while (true)
+                {
+                    BTPFrame btnFrame = await _incomingFrameChannel.Reader.ReadAsync();
+                    Console.WriteLine("Frame Received: " + btnFrame);
+
+                    var isBeginning = (btnFrame.ControlFlags & BTPControlFlags.Beginning) != 0;
+                    var isContinuing = (btnFrame.ControlFlags & BTPControlFlags.Continuing) != 0;
+                    var isEnding = (btnFrame.ControlFlags & BTPControlFlags.Ending) != 0;
+
+                    Console.WriteLine("Beginning: {0}, Continuining: {1}, Ending: {2}", isBeginning ? "1" : "0", isContinuing ? "1" : "0", isEnding ? "1" : "0");
+
+                    segments.Add(btnFrame);
+
+                    // We have received the end of a sequence of messages.
+                    // We need to take all the Payloads and stick them together.
+                    //
+                    if(isEnding)
+                    {
+                        MessageFrame message = new MessageFrame(btnFrame.Payload);
+                        await MessageFrameChannel.Writer.WriteAsync(message);
+                    }
+                    
+                    //if ((segment.Flags & BTPFlags.Ending) == 0x0)
+                    //    continue;
+                    //PayloadWriter buffer = new PayloadWriter(segments[0].Length);
+                    //foreach (BTPFrame part in segments)
+                    //    buffer.Write(part.Payload);
+                    //segments.Clear();
+                    //Frame frame = new Frame(buffer.GetPayload().Span, destination);
+                    //if (!frame.Valid)
+                    //{
+                    //    Console.WriteLine("Invalid frame received");
+                    //    continue;
+                    //}
+                    //SessionContext? session = SessionManager.GetSession(frame.SessionID, destination);
+                    //Console.WriteLine(DateTime.Now.ToString("h:mm:ss") + " Received: " + frame.ToString());
+                    //if (session == null)
+                    //{
+                    //    Console.WriteLine("Unknown Session: " + frame.SessionID);
+                    //    continue;
+                    //}
+                    //session.ProcessFrame(frame);
+                    //session.Timestamp = DateTime.Now;
+                    //session.LastActive = DateTime.Now;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
 
         private void _device_ConnectionStatusChanged(BluetoothLEDevice sender, object args)
@@ -136,6 +194,11 @@ namespace Matter.Core.BTP
             //
             _isConnected = handshakeResponseFrame.Version == 0x04;
 
+            if(_isConnected)
+            {
+                await Task.Factory.StartNew(ListenForResponses);
+            }
+
             return _isConnected;
         }
 
@@ -150,6 +213,8 @@ namespace Matter.Core.BTP
             {
                 reader.ReadBytes(readData);
             }
+
+            Console.WriteLine(string.Join(" ", readData.Select(x => x.ToString("X2"))));
 
             // Check the ControlFlags.
             //
@@ -194,8 +259,6 @@ namespace Matter.Core.BTP
             await _incomingFrameChannel.Writer.WriteAsync(frame);
 
             Console.WriteLine("------------------------------------------");
-
-            _responseReceivedSemaphore.Release();
         }
 
         internal async Task SendAsync(MessageFrame messageFrame)

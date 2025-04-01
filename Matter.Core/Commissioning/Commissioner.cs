@@ -140,6 +140,10 @@ namespace Matter.Core.Commissioning
 
                             await exchange.SendAsync(messageFrame);
                             var responseMessageFrame = await exchange.ReceiveAsync();
+
+                            Console.WriteLine("Message received");
+                            Console.WriteLine("OpCode: {0:X2}", responseMessageFrame.MessagePayload.ProtocolId);
+                            Console.WriteLine("ProtocolId: {0:X2}", responseMessageFrame.MessagePayload.ProtocolOpCode);
                         }
 
                         _resetEvent.Set();

@@ -41,8 +41,11 @@
                 headerSize += 2;
             }
 
-            // TODO Read the payload bytes.
-            //
+            if(!isHandshake)
+            {
+                Payload = new byte[readData.Length - headerSize];
+                Array.Copy(readData, headerSize, Payload, 0, readData.Length - headerSize);
+            }
         }
 
         public BTPControlFlags ControlFlags { get; set; }

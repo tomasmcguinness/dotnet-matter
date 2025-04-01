@@ -1,11 +1,18 @@
-﻿using System.Buffers.Binary;
-using System.Numerics;
-
-namespace Matter.Core
+﻿namespace Matter.Core
 {
     public class MatterTLV
     {
         private List<byte> _values = new();
+
+        public MatterTLV()
+        {
+            // Empty constructor
+        }
+
+        public MatterTLV(byte[] payload)
+        {
+            // TOOD Parse the payload!
+        }
 
         public MatterTLV AddStructure()
         {
