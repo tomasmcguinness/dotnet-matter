@@ -1,4 +1,5 @@
 ﻿using Matter.Core.BTP;
+using Matter.Core.Cryptography;
 using System.Security.Cryptography;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
@@ -114,7 +115,7 @@ namespace Matter.Core.Commissioning
                             // Table 14. Protocol IDs for the Matter Standard Vendor ID
                             messagePayload.ProtocolId = 0x00;
                             // From Table 18. Secure Channel Protocol Opcodes
-                            messagePayload.ProtocolOpCode = 0x20;
+                            messagePayload.ProtocolOpCode = 0x20; // PBKDFParamRequest
 
                             var messageFrame = new MessageFrame(messagePayload);
 
@@ -134,8 +135,8 @@ namespace Matter.Core.Commissioning
                             // Generate a random SourceNodeId
                             //
                             Random random = new Random();
-                            long myRandomNumber = random.NextInt64(1, long.MaxValue);
-                            messageFrame.SourceNodeID = (ulong)myRandomNumber;
+                            long sourceNodeId = random.NextInt64(1, long.MaxValue);
+                            messageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                             await exchange.SendAsync(messageFrame);
                             var responseMessageFrame = await exchange.ReceiveAsync();
@@ -175,6 +176,45 @@ namespace Matter.Core.Commissioning
 
                             // TODO Ensure the last byte is now an EndContainer; 
                             //payload.CloseStructure();
+
+                            // Create PAKE1
+                            //
+                            var Pake1 = new MatterTLV();
+                            Pake1.AddStructure();
+
+                            var pA = CryptographyMethods.Crypto_PAKEValues_Initiator(20202021, iterations, salt);
+
+                            Pake1.Add4OctetString(1, pA.ToByteArray().AsSpan().Slice(0,65).ToArray());
+
+                            var pake1MessagePayload = new MessagePayload(Pake1);
+
+                            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                            // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                            messagePayload.ProtocolId = 0x00;
+                            // From Table 18. Secure Channel Protocol Opcodes
+                            messagePayload.ProtocolOpCode = 0x22; //PASE Pake1
+
+                            var pakeMessageFrame = new MessageFrame(pake1MessagePayload);
+
+                            // The Message Header
+                            // The Session ID field SHALL be set to 0.
+                            // The Session Type bits of the Security Flags SHALL be set to 0.
+                            // In the PASE messages from the initiator, S Flag SHALL be set to 1 and DSIZ SHALL be set to 0.
+                            //
+                            // Message Flags (1byte) 0000100 0x04
+                            // SessionId (2bytes) 0x00
+                            // SecurityFlags (1byte) 0x00
+                            //
+                            messageFrame.MessageFlags |= MessageFlags.S;
+                            messageFrame.SessionID = 0x00;
+                            messageFrame.SecurityFlags = 0x00;
+
+                            // Generate a random SourceNodeId
+                            //
+                            messageFrame.SourceNodeID = (ulong)sourceNodeId;
+
+                            await exchange.SendAsync(messageFrame);
                         }
 
                         _resetEvent.Set();
