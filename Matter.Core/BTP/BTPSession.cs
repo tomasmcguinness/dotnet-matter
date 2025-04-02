@@ -118,13 +118,13 @@ namespace Matter.Core.BTP
                 Console.WriteLine($"Sending Standalone Acknowledgement for {_receivedSequenceCount}");
 
                 BTPFrame acknowledgementFrame = new BTPFrame();
-                acknowledgementFrame.Sequence = _sentSequenceNumber++;
+                acknowledgementFrame.Sequence = (byte)_sentSequenceNumber++;
                 acknowledgementFrame.ControlFlags = BTPControlFlags.Acknowledge;
 
                 if (_acknowledgedSequenceCount != _receivedSequenceCount)
                 {
                     _acknowledgedSequenceCount = _receivedSequenceCount;
-                    acknowledgementFrame.AcknowledgeNumber = _receivedSequenceCount;
+                    acknowledgementFrame.AcknowledgeNumber = (byte)_receivedSequenceCount;
                 }
 
                 var writer = new MatterMessageWriter();
@@ -285,7 +285,7 @@ namespace Matter.Core.BTP
             {
                 foreach (var btpFrame in segments)
                 {
-                    btpFrame.Sequence = _sentSequenceNumber++;
+                    btpFrame.Sequence = (byte)_sentSequenceNumber++;
 
                     Console.WriteLine("Sending BTPFrame segment [{0}] [{1}]...", btpFrame.Sequence, Convert.ToString((byte)btpFrame.ControlFlags, 2).PadLeft(8, '0'));
 

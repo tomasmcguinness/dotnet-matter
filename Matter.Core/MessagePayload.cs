@@ -11,10 +11,12 @@
         {
             ExchangeFlags = (ExchangeFlags)messagePayload[0];
             ProtocolOpCode = messagePayload[1];
-            ProtocolId = BitConverter.ToUInt16(messagePayload, 2);
-            ExchangeID = BitConverter.ToUInt16(messagePayload, 4);
-
-            Payload = new MatterTLV(messagePayload.AsSpan<byte>().Slice(6).ToArray()); 
+            ExchangeID = BitConverter.ToUInt16(messagePayload, 2);
+            // TODO Protovol VendorId
+            ProtocolId = BitConverter.ToUInt16(messagePayload, 4);
+            // TODO Acknowledged Message Counter
+            // TODO Secured Extensions
+            Payload = new MatterTLV(messagePayload.AsSpan<byte>().Slice(6).ToArray());
         }
 
         public ExchangeFlags ExchangeFlags { get; set; }

@@ -128,9 +128,9 @@ namespace Matter.Core.Commissioning
                             // SessionId (2bytes) 0x00
                             // SecurityFlags (1byte) 0x00
                             //
-                            messageFrame.Flags |= MessageFlags.SourceNodeID;
+                            messageFrame.MessageFlags |= MessageFlags.S;
                             messageFrame.SessionID = 0x00;
-                            messageFrame.Security = 0x00;
+                            messageFrame.SecurityFlags = 0x00;
 
                             // Generate a random SourceNodeId
                             //
@@ -142,8 +142,17 @@ namespace Matter.Core.Commissioning
                             var responseMessageFrame = await exchange.ReceiveAsync();
 
                             Console.WriteLine("Message received");
-                            Console.WriteLine("OpCode: {0:X2}", responseMessageFrame.MessagePayload.ProtocolId);
-                            Console.WriteLine("ProtocolId: {0:X2}", responseMessageFrame.MessagePayload.ProtocolOpCode);
+                            Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}",
+                                (byte)responseMessageFrame.MessageFlags,
+                                responseMessageFrame.SessionID,
+                                (byte)responseMessageFrame.SecurityFlags,
+                                responseMessageFrame.MessageCounter);
+
+                            Console.WriteLine("ExchangeFlags: {0:X2}", (byte)responseMessageFrame.MessagePayload.ExchangeFlags);
+                            Console.WriteLine("Protocol OpCode: {0:X2}", responseMessageFrame.MessagePayload.ProtocolOpCode);
+                            Console.WriteLine("Exchange Id: {0:X2}", responseMessageFrame.MessagePayload.ExchangeID);
+                            Console.WriteLine("ProtocolId: {0:X2}", responseMessageFrame.MessagePayload.ProtocolId);
+
                         }
 
                         _resetEvent.Set();
