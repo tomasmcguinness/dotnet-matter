@@ -39,6 +39,6 @@
             // Write the bytes of the payload!
             //
             Payload.Serialize(writer);
-        }
+        }        
     }
 }

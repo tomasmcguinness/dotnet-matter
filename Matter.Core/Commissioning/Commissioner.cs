@@ -36,7 +36,6 @@ namespace Matter.Core.Commissioning
         }
 
         private BTPSession _btpSession;
-        private int _matterMessageCounter = 0;
 
         private async void BluetoothLEAdvertisementWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
@@ -100,7 +99,7 @@ namespace Matter.Core.Commissioning
 
                             // We need a control octet, the tag, the length and the value.
                             //
-                            PBKDFParamRequest.AddOctetString4(1, RandomNumberGenerator.GetBytes(32));
+                            PBKDFParamRequest.Add32BitOctetString(1, RandomNumberGenerator.GetBytes(32));
                             PBKDFParamRequest.AddUShort(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
                             PBKDFParamRequest.AddUShort(3, 0);
                             PBKDFParamRequest.AddBool(4, false);
@@ -142,16 +141,26 @@ namespace Matter.Core.Commissioning
                             var responseMessageFrame = await exchange.ReceiveAsync();
 
                             Console.WriteLine("Message received");
-                            Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}",
+                            Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
                                 (byte)responseMessageFrame.MessageFlags,
                                 responseMessageFrame.SessionID,
                                 (byte)responseMessageFrame.SecurityFlags,
-                                responseMessageFrame.MessageCounter);
+                                responseMessageFrame.MessageCounter,
+                                (byte)responseMessageFrame.MessagePayload.ExchangeFlags,
+                                responseMessageFrame.MessagePayload.ProtocolOpCode,
+                                responseMessageFrame.MessagePayload.ExchangeID,
+                                responseMessageFrame.MessagePayload.ProtocolId
+                            );
 
-                            Console.WriteLine("ExchangeFlags: {0:X2}", (byte)responseMessageFrame.MessagePayload.ExchangeFlags);
-                            Console.WriteLine("Protocol OpCode: {0:X2}", responseMessageFrame.MessagePayload.ProtocolOpCode);
-                            Console.WriteLine("Exchange Id: {0:X2}", responseMessageFrame.MessagePayload.ExchangeID);
-                            Console.WriteLine("ProtocolId: {0:X2}", responseMessageFrame.MessagePayload.ProtocolId);
+                            //Console.WriteLine(string.Join(" ", responseMessageFrame.MessagePayload.Payload));
+
+                            // We have to walk the response.
+                            //
+                            responseMessageFrame.MessagePayload.Payload.OpenStructure();
+
+                            var initiatorRandomBytes = responseMessageFrame.MessagePayload.Payload.GetOctetString(1);
+
+                           
 
                         }
 
