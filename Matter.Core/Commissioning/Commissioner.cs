@@ -99,7 +99,7 @@ namespace Matter.Core.Commissioning
 
                             // We need a control octet, the tag, the length and the value.
                             //
-                            PBKDFParamRequest.Add32BitOctetString(1, RandomNumberGenerator.GetBytes(32));
+                            PBKDFParamRequest.Add4OctetString(1, RandomNumberGenerator.GetBytes(32));
                             PBKDFParamRequest.AddUShort(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
                             PBKDFParamRequest.AddUShort(3, 0);
                             PBKDFParamRequest.AddBool(4, false);
@@ -156,12 +156,25 @@ namespace Matter.Core.Commissioning
 
                             // We have to walk the response.
                             //
-                            responseMessageFrame.MessagePayload.Payload.OpenStructure();
+                            var payload = responseMessageFrame.MessagePayload.Payload;
 
-                            var initiatorRandomBytes = responseMessageFrame.MessagePayload.Payload.GetOctetString(1);
+                            payload.OpenStructure();
 
-                           
+                            var initiatorRandomBytes = payload.GetOctetString(1);
+                            var responderRandomBytes = payload.GetOctetString(2);
+                            var responderSessionId = payload.GetUnsignedShort(3);
 
+                            payload.OpenStructure(4);
+
+                            var iterations = payload.GetUnsignedShort(1);
+                            var salt = payload.GetOctetString(2);
+
+                            payload.CloseStructure();
+
+                            // TODO Read tag 5
+
+                            // TODO Ensure the last byte is now an EndContainer; 
+                            //payload.CloseStructure();
                         }
 
                         _resetEvent.Set();

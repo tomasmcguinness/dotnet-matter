@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-using System.Net.Sockets;
+﻿using System.Reflection;
 
 namespace Matter.Core
 {
@@ -30,7 +29,7 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV Add32BitOctetString(long tagNumber, byte[] value)
+        public MatterTLV Add4OctetString(long tagNumber, byte[] value)
         {
             // This is a context type 1, shifted 5 bits and then OR'd with 12
             // to produce a context tag for Octet String, 4 bytes
@@ -80,12 +79,23 @@ namespace Matter.Core
 
         internal void OpenStructure()
         {
-            if (_values[_pointer] != 0x15)
+            if (_values[_pointer++] != 0x15) // Anonymous Structure
+            {
+                throw new Exception("Expected Open Structure isn't there");
+            }
+        }
+
+        internal void OpenStructure(int tag)
+        {
+            if (_values[_pointer++] != 0x35) // Tag Context Structure
             {
                 throw new Exception("Expected Open Structure isn't there");
             }
 
-            _pointer++;
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
         }
 
         internal byte[] GetOctetString(int tag)
@@ -94,9 +104,23 @@ namespace Matter.Core
             //
             int length = 0;
 
-            if ((_values[_pointer] & 0x10) != 0)
+            if ((0x1F & _values[_pointer]) == 0x13)
             {
-                //Octet String, 1 - octet length
+                //Octet String, 2 - octet length
+                length = 8;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x12)
+            {
+                //Octet String, 2 - octet length
+                length = 4;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x11)
+            {
+                //Octet String, 2 - octet length
+                length = 2;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x10) // Context Octet String, 1 - octet length
+            {
                 length = 1;
             }
 
@@ -107,23 +131,81 @@ namespace Matter.Core
                 throw new Exception("Expected tag number not found");
             }
 
-            var valueLength = 0;
+            ulong valueLength = 0;
 
             if (length == 1)
             {
                 valueLength = _values[_pointer++];
             }
-
-            //_values.AddRange(BitConverter.GetBytes((uint)value.Length));
-            //_values.AddRange(value);
+            else if (length == 2)
+            {
+                valueLength = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                _pointer += 2;
+            }
+            else if (length == 4)
+            {
+                valueLength = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+                _pointer += 4;
+            }
+            else if (length == 8)
+            {
+                valueLength = BitConverter.ToUInt64(_values.ToArray(), _pointer);
+                _pointer += 8;
+            }
 
             var bytes = new byte[valueLength];
 
-            Array.Copy(_values.ToArray(), _pointer, bytes, 0, valueLength);
+            Array.Copy(_values.ToArray(), _pointer, bytes, 0, (int)valueLength);
 
             _pointer += (int)valueLength;
 
             return bytes;
+        }
+
+        internal ushort GetUnsignedShort(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x05)
+            {
+                throw new Exception("Expected Unsigned Integer, 2-octet value");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            var value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+
+            _pointer += 2;
+
+            return value;
+        }
+
+        internal uint GetUnsignedInteger(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x06)
+            {
+                throw new Exception("Expected Unsigned Integer, 4-octet value");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            var value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+
+            _pointer += 4;
+
+            return value;
+        }
+
+        internal void CloseStructure()
+        {
+            if (_values[_pointer++] != 0x18) // End Container
+            {
+                throw new Exception("Expected EndContainer isn't there");
+            }
         }
     }
 }
