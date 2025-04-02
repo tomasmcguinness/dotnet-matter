@@ -35,7 +35,10 @@ I picked this project up again as I've been playing a lot with ESP32 and Matter.
 I have gotten Bluetooth scanning working, uwing the WinRT Bluetooth libraries. This will limit it to Windows 10 for now, but that's okay for now. I've written a blog post on this: https://tomasmcguinness.com/2025/03/21/building-a-net-matter-controller/
 I have also managed to establish a BTP (Bluetooth Transport Protocol) session, getting a handshake reponse from an ESP32-C6 (running the esp-matter Light example). 
 
+### 02/04/2025
 
+Lots of progress in the past two weeks. I have successfully sent one of the PASE messages (PBKDFParamRequest) and received a response with some of the parameters present (PBKDFParamResponse)
+I am now trying to get the Pake1 message working. As this involved crytography, it's proving very difficult!
 
 
 
