@@ -17,7 +17,7 @@ namespace Matter.Core.Cryptography
             var passcodeBytes = new byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(passcodeBytes, passcode);
 
-            var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BITS);
+            var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BYTES);
 
             var w0s = new BigInteger(pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES));
             var w1s = new BigInteger(pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES));
@@ -30,12 +30,16 @@ namespace Matter.Core.Cryptography
 
             var G = new BigInteger(Convert.FromHexString("6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C2964FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"), isUnsigned: true, isBigEndian: true);
 
-            var w0 = w0s % p;
-            var w1 = w1s % p;
+            ECPoint ecPoint = new ECPoint();
+            ecPoint.X = new BigInteger(Convert.FromHexString("6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"), isUnsigned: true, isBigEndian: true).ToByteArray();
+            ecPoint.Y = new BigInteger(Convert.FromHexString("4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"), isUnsigned: true, isBigEndian: true).ToByteArray();
+
+            var w0 = w0s % n;
+            var w1 = w1s % n;
 
             var x = new BigInteger(RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true, true);
 
-            var X = BigInteger.Add(BigInteger.Multiply(x, G), BigInteger.Multiply(w0, M));
+            var X = BigInteger.Add(BigInteger.Multiply(x, ecPoint.), BigInteger.Multiply(w0, M));
 
             return X;
         }
