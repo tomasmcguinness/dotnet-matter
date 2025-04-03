@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-
-namespace Matter.Core
+﻿namespace Matter.Core
 {
     public class MatterTLV
     {
@@ -26,6 +24,19 @@ namespace Matter.Core
         public MatterTLV EndContainer()
         {
             _values.Add(0x18);
+            return this;
+        }
+
+        public MatterTLV Add1OctetString(long tagNumber, byte[] value)
+        {
+            // This is a context type 1, shifted 5 bits and then OR'd with 10
+            // to produce a context tag for Octet String, 1 bytes length
+            // 00110010
+            //
+            _values.Add((0x1 << 5) | 0x10); // Octet String, 1-octet length
+            _values.Add((byte)tagNumber);
+            _values.Add((byte)(uint)value.Length);
+            _values.AddRange(value);
             return this;
         }
 

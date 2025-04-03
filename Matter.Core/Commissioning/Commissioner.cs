@@ -1,8 +1,10 @@
 ﻿using Matter.Core.BTP;
 using Matter.Core.Cryptography;
 using System.Security.Cryptography;
+using System.Text;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Services.Store;
 using Windows.Storage.Streams;
 
 namespace Matter.Core.Commissioning
@@ -90,7 +92,7 @@ namespace Matter.Core.Commissioning
                             // We're going to Exchange messages, so we need an MessageExchange 
                             // to track it (4.10).
                             //
-                            var exchangeId = (ushort)22; // TODO Make random!
+                            var exchangeId = (ushort)88; // TODO Make random!
                             var exchange = new MessageExchange(exchangeId, _btpSession);
 
                             // Perform the PASE exchange.
@@ -170,6 +172,8 @@ namespace Matter.Core.Commissioning
                             var iterations = payload.GetUnsignedShort(1);
                             var salt = payload.GetOctetString(2);
 
+                            Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt));
+
                             payload.CloseStructure();
 
                             // TODO Read tag 5
@@ -184,16 +188,22 @@ namespace Matter.Core.Commissioning
 
                             var pA = CryptographyMethods.Crypto_PAKEValues_Initiator(20202021, iterations, salt);
 
-                            Pake1.Add4OctetString(1, pA.ToByteArray().AsSpan().Slice(0,65).ToArray());
+                            var byteString = pA.GetEncoded(false).ToArray();
+
+                            Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}\npA: {3}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt), Convert.ToBase64String(byteString));
+
+                            Pake1.Add1OctetString(1, byteString);
+
+                            Pake1.EndContainer();
 
                             var pake1MessagePayload = new MessagePayload(Pake1);
 
-                            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+                            pake1MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
                             // Table 14. Protocol IDs for the Matter Standard Vendor ID
-                            messagePayload.ProtocolId = 0x00;
+                            pake1MessagePayload.ProtocolId = 0x00;
                             // From Table 18. Secure Channel Protocol Opcodes
-                            messagePayload.ProtocolOpCode = 0x22; //PASE Pake1
+                            pake1MessagePayload.ProtocolOpCode = 0x22; //PASE Pake1
 
                             var pakeMessageFrame = new MessageFrame(pake1MessagePayload);
 
@@ -206,15 +216,41 @@ namespace Matter.Core.Commissioning
                             // SessionId (2bytes) 0x00
                             // SecurityFlags (1byte) 0x00
                             //
-                            messageFrame.MessageFlags |= MessageFlags.S;
-                            messageFrame.SessionID = 0x00;
-                            messageFrame.SecurityFlags = 0x00;
+                            pakeMessageFrame.MessageFlags |= MessageFlags.S;
+                            pakeMessageFrame.SessionID = 0x00;
+                            pakeMessageFrame.SecurityFlags = 0x00;
 
                             // Generate a random SourceNodeId
                             //
-                            messageFrame.SourceNodeID = (ulong)sourceNodeId;
+                            pakeMessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
-                            await exchange.SendAsync(messageFrame);
+                            await exchange.SendAsync(pakeMessageFrame);
+
+                            responseMessageFrame = await exchange.ReceiveAsync();
+
+                            Console.WriteLine("Message received");
+                            Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
+                                (byte)responseMessageFrame.MessageFlags,
+                                responseMessageFrame.SessionID,
+                                (byte)responseMessageFrame.SecurityFlags,
+                                responseMessageFrame.MessageCounter,
+                                (byte)responseMessageFrame.MessagePayload.ExchangeFlags,
+                                responseMessageFrame.MessagePayload.ProtocolOpCode,
+                                responseMessageFrame.MessagePayload.ExchangeID,
+                                responseMessageFrame.MessagePayload.ProtocolId
+                            );
+
+                            payload = responseMessageFrame.MessagePayload.Payload;
+
+                            payload.OpenStructure();
+
+                            var pB = payload.GetOctetString(1);
+                            var pC = payload.GetOctetString(2);
+
+                            payload.CloseStructure();
+
+                            // Pake3
+
                         }
 
                         _resetEvent.Set();
