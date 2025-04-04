@@ -121,18 +121,13 @@ namespace Matter.Core.Cryptography
 
             AddToContext(TTwriter, contextHash);
             AddToContext(TTwriter, BitConverter.GetBytes((ulong)0));
-            AddToContext(TTwriter, BitConverter.GetBytes((ulong)0));
             AddToContext(TTwriter, M.GetEncoded(false));
             AddToContext(TTwriter, N.GetEncoded(false));
             AddToContext(TTwriter, X.GetEncoded(false));
             AddToContext(TTwriter, Y);
             AddToContext(TTwriter, Z.GetEncoded(false));
             AddToContext(TTwriter, V.GetEncoded(false));
-
-            var w0Bytes = new byte[4];
-            BinaryPrimitives.WriteUInt32BigEndian(w0Bytes, (uint)w0.IntValue);
-
-            AddToContext(TTwriter, w0Bytes);
+            AddToContext(TTwriter, w0.ToByteArrayUnsigned());
 
             TTwriter.Flush();
 
@@ -143,8 +138,8 @@ namespace Matter.Core.Cryptography
 
         private static void AddToContext(BinaryWriter TTwriter, byte[] data)
         {
-            // BitConvert is little endian.
-            var lengthBytes = BitConverter.GetBytes((ulong)data.Length);
+            var lengthBytes = new byte[8];
+            BinaryPrimitives.WriteUInt64LittleEndian(data, (ulong)data.Length);
 
             TTwriter.Write(lengthBytes);
             TTwriter.Write(data);
