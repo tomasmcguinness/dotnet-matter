@@ -11,7 +11,7 @@
 
         public MatterTLV(byte[] payload)
         {
-            _values = new List<byte>(payload);
+            _values = [.. payload];
         }
 
         public MatterTLV AddStructure()
@@ -84,7 +84,6 @@
             var bytes = _values.ToArray();
             writer.Write(bytes);
         }
-
 
         private int _pointer = 0;
 
@@ -217,6 +216,11 @@
             {
                 throw new Exception("Expected EndContainer isn't there");
             }
+        }
+
+        internal byte[] GetBytes()
+        {
+            return _values.ToArray();
         }
     }
 }

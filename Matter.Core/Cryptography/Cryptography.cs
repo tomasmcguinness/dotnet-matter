@@ -1,16 +1,21 @@
 ﻿using Org.BouncyCastle.Asn1.X9;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Utilities;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Matter.Core.Cryptography
 {
-    internal class CryptographyMethods
+    public class CryptographyMethods
     {
-        public static Org.BouncyCastle.Math.EC.ECPoint Crypto_PAKEValues_Initiator(uint passcode, ushort iterations, byte[] salt)
+        private static Org.BouncyCastle.Math.EC.ECPoint M;
+        private static Org.BouncyCastle.Math.EC.ECPoint N;
+
+        public static (BigInteger w0, BigInteger w1, BigInteger x, Org.BouncyCastle.Math.EC.ECPoint X) Crypto_PAKEValues_Initiator(uint passcode, ushort iterations, byte[] salt)
         {
             // https://datatracker.ietf.org/doc/rfc9383/
             //
@@ -32,39 +37,117 @@ namespace Matter.Core.Cryptography
 
             Console.WriteLine("PBKDF2: {0}", Convert.ToBase64String(pbkdf));
 
-            var w0s = new BigInteger(pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray(), true);
-            var w1s = new BigInteger(pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray(), true);
+            var w0s = new BigInteger(1, pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray(), true);
+            var w1s = new BigInteger(1, pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray(), true);
 
-            //var p = new BigInteger(Convert.FromHexString("FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF"), isUnsigned: true, isBigEndian: true);
-            //var n = new BigInteger(Convert.FromHexString("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551"), isUnsigned: true, isBigEndian: true);
-            //ecP.G.g
-
-            var M = ecP.Curve.DecodePoint(Convert.FromHexString("02886E2F97ACE46E55BA9DD7242579F2993B64E16EF3DCAB95AFD497333D8FA12F"));
-
-            //var M = new ECPoint(Convert.FromHexString("02886E2F97ACE46E55BA9DD7242579F2993B64E16EF3DCAB95AFD497333D8FA12F"));
-            //var N = new BigInteger(Convert.FromHexString("03D8BBD6C639C62937B04D997F38C3770719C629D7014D49A24B4F98BAA1292B49"), isUnsigned: true, isBigEndian: true);
-
-            //var G = new BigInteger(Convert.FromHexString("6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C2964FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"), isUnsigned: true, isBigEndian: true);
-
-            //ECPoint ecPoint = new ECPoint();
-            //ecPoint.X = new BigInteger(Convert.FromHexString("6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"), isUnsigned: true, isBigEndian: true).ToByteArray();
-            //ecPoint.Y = new BigInteger(Convert.FromHexString("4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"), isUnsigned: true, isBigEndian: true).ToByteArray();
+            //var w0String = BitConverter.ToString(w0s.ToByteArray()).Replace("-", "");
+            //var w1String = BitConverter.ToString(w1s.ToByteArray()).Replace("-", "");
 
             var w0 = w0s.Mod(ecP.N);
             var w1 = w1s.Mod(ecP.N);
 
-            BigInteger x = new BigInteger(RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
+            //w0String = BitConverter.ToString(w0.ToByteArray()).Replace("-", "");
+            //w1String = BitConverter.ToString(w1.ToByteArray()).Replace("-", "");
 
-            while (x.CompareTo(ecP.N.Subtract(new BigInteger("1"))) > 0)
+            BigInteger x = new BigInteger(1, Convert.FromHexString("8b0f3f383905cf3a3bb955ef8fb62e24849dd349a05ca79aafb18041d30cbdb6"), true);
+
+            //BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
+
+            M = ecP.Curve.DecodePoint(Convert.FromHexString("02886e2f97ace46e55ba9dd7242579f2993b64e16ef3dcab95afd497333d8fa12f"));
+
+            var X = ecP.G.Multiply(x).Add(M.Multiply(w0)).Normalize();
+
+            return (w0, w1, x, X);
+        }
+
+        internal static (byte[] Ke, byte[] hAY, byte[] hBX) Crypto_P2(byte[] contextHash, BigInteger w0, BigInteger w1, BigInteger x, Org.BouncyCastle.Math.EC.ECPoint X, byte[] Y)
+        {
+            X9ECParameters ecP = ECNamedCurveTable.GetByName("Secp256r1");
+
+            var YPoint = ecP.Curve.DecodePoint(Y).Normalize();
+
+            if (!YPoint.IsValid())
             {
-                x = new BigInteger(RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
+                throw new InvalidOperationException("pC is not on the curve");
             }
 
-            var X = ecP.G.Multiply(x).Add(M.Multiply(w0));
+            N = ecP.Curve.DecodePoint(Convert.FromHexString("03d8bbd6c639c62937b04d997f38c3770719c629d7014d49a24b4f98baa1292b49"));
 
-            return X;
+            var yNwo = YPoint.Add(N.Multiply(w0).Negate());
+            var Z = yNwo.Multiply(x);
+            var V = yNwo.Multiply(w1);
 
-            //return new BigInteger("1");
+            var Zs = BitConverter.ToString(Z.GetEncoded(false)).Replace("-", "");
+            var Vs = BitConverter.ToString(V.GetEncoded(false)).Replace("-", "");
+
+            Console.WriteLine("Z: {0}", Zs);
+            Console.WriteLine("V: {0}", Vs);
+
+            return ComputeSecretAndVerifiers(contextHash, w0, X, Y, Z, V);
+        }
+
+        private static (byte[] Ke, byte[] hAY, byte[] hBX) ComputeSecretAndVerifiers(byte[] contextHash, BigInteger w0, Org.BouncyCastle.Math.EC.ECPoint X, byte[] Y, Org.BouncyCastle.Math.EC.ECPoint Z, Org.BouncyCastle.Math.EC.ECPoint V)
+        {
+            var TT_HASH = ComputeTranscriptHash(contextHash, w0, X, Y, Z, V);
+
+            var Ka = TT_HASH.AsSpan().Slice(0, 16).ToArray();
+            var Ke = TT_HASH.AsSpan().Slice(16, 16).ToArray();
+
+            byte[] salt = Array.Empty<byte>(); // Empty salt (Uint8Array(0))
+            byte[] info = Encoding.ASCII.GetBytes("ConfirmationKeys");
+
+            var hkdf = new HkdfBytesGenerator(new Sha256Digest());
+            hkdf.Init(new HkdfParameters(Ka, salt, info));
+
+            var KcAB = new byte[32];
+            hkdf.GenerateBytes(KcAB, 0, 32);
+
+            var KcA = KcAB.AsSpan().Slice(0, 16).ToArray();
+            var KcB = KcAB.AsSpan().Slice(16, 16).ToArray();
+
+            var hmac = new HMACSHA256(KcA);
+            byte[] hAY = hmac.ComputeHash(Y);
+
+            hmac = new HMACSHA256(KcB);
+            byte[] hBX = hmac.ComputeHash(X.GetEncoded(false));
+
+            return (Ke, hAY, hBX);
+        }
+
+        private static byte[] ComputeTranscriptHash(byte[] contextHash, BigInteger w0, Org.BouncyCastle.Math.EC.ECPoint X, byte[] Y, Org.BouncyCastle.Math.EC.ECPoint Z, Org.BouncyCastle.Math.EC.ECPoint V)
+        {
+            var memoryStream = new MemoryStream();
+            var TTwriter = new BinaryWriter(memoryStream);
+
+            AddToContext(TTwriter, contextHash);
+            AddToContext(TTwriter, BitConverter.GetBytes((ulong)0));
+            AddToContext(TTwriter, BitConverter.GetBytes((ulong)0));
+            AddToContext(TTwriter, M.GetEncoded(false));
+            AddToContext(TTwriter, N.GetEncoded(false));
+            AddToContext(TTwriter, X.GetEncoded(false));
+            AddToContext(TTwriter, Y);
+            AddToContext(TTwriter, Z.GetEncoded(false));
+            AddToContext(TTwriter, V.GetEncoded(false));
+
+            var w0Bytes = new byte[4];
+            BinaryPrimitives.WriteUInt32BigEndian(w0Bytes, (uint)w0.IntValue);
+
+            AddToContext(TTwriter, w0Bytes);
+
+            TTwriter.Flush();
+
+            HashAlgorithm hash = SHA256.Create();
+
+            return hash.ComputeHash(memoryStream.ToArray());
+        }
+
+        private static void AddToContext(BinaryWriter TTwriter, byte[] data)
+        {
+            // BitConvert is little endian.
+            var lengthBytes = BitConverter.GetBytes((ulong)data.Length);
+
+            TTwriter.Write(lengthBytes);
+            TTwriter.Write(data);
         }
     }
 }

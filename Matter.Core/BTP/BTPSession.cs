@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Runtime.InteropServices.WindowsRuntime;
+﻿using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Channels;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -35,7 +34,7 @@ namespace Matter.Core.BTP
         {
             try
             {
-               var segments = new List<BTPFrame>();
+                var segments = new List<BTPFrame>();
 
                 while (true)
                 {
@@ -53,12 +52,12 @@ namespace Matter.Core.BTP
                     // We have received the end of a sequence of messages.
                     // We need to take all the Payloads and stick them together.
                     //
-                    if(isEnding)
+                    if (isEnding)
                     {
                         MessageFrame message = new MessageFrame(btnFrame.Payload);
                         await MessageFrameChannel.Writer.WriteAsync(message);
                     }
-                    
+
                     //if ((segment.Flags & BTPFlags.Ending) == 0x0)
                     //    continue;
                     //PayloadWriter buffer = new PayloadWriter(segments[0].Length);
@@ -182,7 +181,6 @@ namespace Matter.Core.BTP
             Console.WriteLine("------------------------------------------");
             Console.WriteLine("HandShake Response Received!");
             Console.WriteLine("Control Flags: {0:X}", handshakeResponseFrame.ControlFlags);
-            //Console.WriteLine("Management Opcode: {0:X}", handshakeResponseFrame.[1]);
             Console.WriteLine("Version: {0}", handshakeResponseFrame.Version);
             Console.WriteLine("ATT High Byte: {0}", handshakeResponseFrame.ATTSize);
             Console.WriteLine("Window Size: {0}", handshakeResponseFrame.WindowSize);
@@ -194,7 +192,7 @@ namespace Matter.Core.BTP
             //
             _isConnected = handshakeResponseFrame.Version == 0x04;
 
-            if(_isConnected)
+            if (_isConnected)
             {
                 await Task.Factory.StartNew(ListenForResponses);
             }
@@ -325,6 +323,7 @@ namespace Matter.Core.BTP
                 // Depending on the type of message, we have different header lengths. E.g. for Beginning
                 // we must inlude the MessageLength in the payload. For Continuing, we don't!
                 // We start with the ControlFlags and the sequence number.
+                //
                 var headerLength = 2;
 
                 if (segments.Count == 0)
