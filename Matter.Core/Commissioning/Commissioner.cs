@@ -1,8 +1,5 @@
 ﻿using Matter.Core.BTP;
 using Matter.Core.Cryptography;
-using Org.BouncyCastle.Utilities;
-using System;
-using System.Collections;
 using System.Security.Cryptography;
 using System.Text;
 using Windows.Devices.Bluetooth;
@@ -44,6 +41,8 @@ namespace Matter.Core.Commissioning
 
         private async void BluetoothLEAdvertisementWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
+            // If we got this advertisment already, just ignore it.
+            //
             if (_receivedAdvertisments.Contains(args.BluetoothAddress))
             {
                 return;
@@ -158,8 +157,6 @@ namespace Matter.Core.Commissioning
                                 responseMessageFrame.MessagePayload.ProtocolId
                             );
 
-                            //Console.WriteLine(string.Join(" ", responseMessageFrame.MessagePayload.Payload));
-
                             // We have to walk the response.
                             //
                             var PBKDFParamResponse = responseMessageFrame.MessagePayload.Payload;
@@ -186,7 +183,6 @@ namespace Matter.Core.Commissioning
 
                             // Create PAKE1
                             //
-                            HashAlgorithm hash = SHA256.Create();
 
                             // We first need to generate a context for the SPAKE exchange.
                             // hash([SPAKE_CONTEXT, requestPayload, responsePayload])
@@ -201,7 +197,13 @@ namespace Matter.Core.Commissioning
                             contextToHash.AddRange(PBKDFParamRequest.GetBytes());
                             contextToHash.AddRange(PBKDFParamResponse.GetBytes());
 
-                            var sessionContextHash = hash.ComputeHash(contextToHash.ToArray());
+                            var sessionContextHash = SHA256.HashData(contextToHash.ToArray());
+
+                            Console.WriteLine(string.Join(",", sessionContextHash));
+                            Console.WriteLine("Context: {0}", BitConverter.ToString(SPAKE_CONTEXT));
+                            Console.WriteLine("Request: {0}", BitConverter.ToString(PBKDFParamRequest.GetBytes()));
+                            Console.WriteLine("Response: {0}", BitConverter.ToString(PBKDFParamResponse.GetBytes()));
+                            Console.WriteLine("Hash: {0}", BitConverter.ToString(sessionContextHash));
 
                             // Build the PAKE1 message
                             //
@@ -212,7 +214,9 @@ namespace Matter.Core.Commissioning
 
                             var byteString = X.GetEncoded(false).ToArray();
 
-                            Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}\npA: {3}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt), Convert.ToBase64String(byteString));
+                            //Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}\npA: {3}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt), Convert.ToBase64String(byteString));
+
+                            Console.WriteLine("X: {0}", BitConverter.ToString(byteString));
 
                             pake1.Add1OctetString(1, byteString);
 
@@ -278,10 +282,51 @@ namespace Matter.Core.Commissioning
                             //
                             var (Ke, hAY, hBX) = CryptographyMethods.Crypto_P2(sessionContextHash, w0, w1, x, X, Y);
 
-                            if (hBX != Verifier)
+                            if (!hBX.SequenceEqual(Verifier))
                             {
                                 throw new Exception("Verifier doesn't match!");
                             }
+
+                            var pake3 = new MatterTLV();
+                            pake3.AddStructure();
+
+                            pake3.Add1OctetString(1, hAY);
+
+                            pake3.EndContainer();
+
+                            var pake3MessagePayload = new MessagePayload(pake3);
+
+                            pake3MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                            // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                            pake3MessagePayload.ProtocolId = 0x00;
+                            // From Table 18. Secure Channel Protocol Opcodes
+                            pake3MessagePayload.ProtocolOpCode = 0x24; //PASE Pake3
+
+                            var pake3MessageFrame = new MessageFrame(pake3MessagePayload);
+
+                            // The Message Header
+                            // The Session ID field SHALL be set to 0.
+                            // The Session Type bits of the Security Flags SHALL be set to 0.
+                            // In the PASE messages from the initiator, S Flag SHALL be set to 1 and DSIZ SHALL be set to 0.
+                            //
+                            // Message Flags (1byte) 0000100 0x04
+                            // SessionId (2bytes) 0x00
+                            // SecurityFlags (1byte) 0x00
+                            //
+                            pake3MessageFrame.MessageFlags |= MessageFlags.S;
+                            pake3MessageFrame.SessionID = 0x00;
+                            pake3MessageFrame.SecurityFlags = 0x00;
+
+                            // Generate a random SourceNodeId
+                            //
+                            pake3MessageFrame.SourceNodeID = (ulong)sourceNodeId;
+
+                            await exchange.SendAsync(pake3MessageFrame);
+
+                            var pakeFinishedMessageFrame = await exchange.ReceiveAsync();
+
+
                         }
 
                         _resetEvent.Set();

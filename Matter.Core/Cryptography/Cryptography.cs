@@ -49,9 +49,9 @@ namespace Matter.Core.Cryptography
             //w0String = BitConverter.ToString(w0.ToByteArray()).Replace("-", "");
             //w1String = BitConverter.ToString(w1.ToByteArray()).Replace("-", "");
 
-            BigInteger x = new BigInteger(1, Convert.FromHexString("8b0f3f383905cf3a3bb955ef8fb62e24849dd349a05ca79aafb18041d30cbdb6"), true);
+            //BigInteger x = new BigInteger(1, Convert.FromHexString("8b0f3f383905cf3a3bb955ef8fb62e24849dd349a05ca79aafb18041d30cbdb6"), true);
 
-            //BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
+            BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
 
             M = ecP.Curve.DecodePoint(Convert.FromHexString("02886e2f97ace46e55ba9dd7242579f2993b64e16ef3dcab95afd497333d8fa12f"));
 
@@ -102,6 +102,8 @@ namespace Matter.Core.Cryptography
             var KcAB = new byte[32];
             hkdf.GenerateBytes(KcAB, 0, 32);
 
+            Console.WriteLine("KcAB: {0}", BitConverter.ToString(KcAB));
+
             var KcA = KcAB.AsSpan().Slice(0, 16).ToArray();
             var KcB = KcAB.AsSpan().Slice(16, 16).ToArray();
 
@@ -110,6 +112,9 @@ namespace Matter.Core.Cryptography
 
             hmac = new HMACSHA256(KcB);
             byte[] hBX = hmac.ComputeHash(X.GetEncoded(false));
+
+            Console.WriteLine("hAY: {0}", BitConverter.ToString(hAY));
+            Console.WriteLine("hBX: {0}", BitConverter.ToString(hBX));
 
             return (Ke, hAY, hBX);
         }
@@ -120,7 +125,7 @@ namespace Matter.Core.Cryptography
             var TTwriter = new BinaryWriter(memoryStream);
 
             AddToContext(TTwriter, contextHash);
-            AddToContext(TTwriter, BitConverter.GetBytes((ulong)0));
+            AddToContext(TTwriter, BitConverter.GetBytes((ulong)0), BitConverter.GetBytes((ulong)0));
             AddToContext(TTwriter, M.GetEncoded(false));
             AddToContext(TTwriter, N.GetEncoded(false));
             AddToContext(TTwriter, X.GetEncoded(false));
@@ -131,17 +136,25 @@ namespace Matter.Core.Cryptography
 
             TTwriter.Flush();
 
-            HashAlgorithm hash = SHA256.Create();
+            var bytes = memoryStream.ToArray();
 
-            return hash.ComputeHash(memoryStream.ToArray());
+            Console.WriteLine("Transcript: {0}", BitConverter.ToString(bytes));
+
+            return SHA256.HashData(bytes);
         }
 
         private static void AddToContext(BinaryWriter TTwriter, byte[] data)
         {
             var lengthBytes = new byte[8];
-            BinaryPrimitives.WriteUInt64LittleEndian(data, (ulong)data.Length);
+            BinaryPrimitives.WriteUInt64LittleEndian(lengthBytes, (ulong)data.Length);
 
             TTwriter.Write(lengthBytes);
+            TTwriter.Write(data);
+        }
+
+        private static void AddToContext(BinaryWriter TTwriter, byte[] length, byte[] data)
+        {
+            TTwriter.Write(length);
             TTwriter.Write(data);
         }
     }
