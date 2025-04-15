@@ -57,29 +57,6 @@ namespace Matter.Core.BTP
                         MessageFrame message = new MessageFrame(btnFrame.Payload);
                         await MessageFrameChannel.Writer.WriteAsync(message);
                     }
-
-                    //if ((segment.Flags & BTPFlags.Ending) == 0x0)
-                    //    continue;
-                    //PayloadWriter buffer = new PayloadWriter(segments[0].Length);
-                    //foreach (BTPFrame part in segments)
-                    //    buffer.Write(part.Payload);
-                    //segments.Clear();
-                    //Frame frame = new Frame(buffer.GetPayload().Span, destination);
-                    //if (!frame.Valid)
-                    //{
-                    //    Console.WriteLine("Invalid frame received");
-                    //    continue;
-                    //}
-                    //SessionContext? session = SessionManager.GetSession(frame.SessionID, destination);
-                    //Console.WriteLine(DateTime.Now.ToString("h:mm:ss") + " Received: " + frame.ToString());
-                    //if (session == null)
-                    //{
-                    //    Console.WriteLine("Unknown Session: " + frame.SessionID);
-                    //    continue;
-                    //}
-                    //session.ProcessFrame(frame);
-                    //session.Timestamp = DateTime.Now;
-                    //session.LastActive = DateTime.Now;
                 }
             }
             catch (Exception e)
@@ -123,7 +100,7 @@ namespace Matter.Core.BTP
                 if (_acknowledgedSequenceCount != _receivedSequenceCount)
                 {
                     _acknowledgedSequenceCount = _receivedSequenceCount;
-                    acknowledgementFrame.AcknowledgeNumber = (byte)_receivedSequenceCount;
+                    acknowledgementFrame.AcknowledgeNumber = (byte)_acknowledgedSequenceCount;
                 }
 
                 var writer = new MatterMessageWriter();
@@ -141,7 +118,8 @@ namespace Matter.Core.BTP
         {
             GattDeviceServicesResult gattDeviceServicesResult = await _device.GetGattServicesAsync();
 
-            // This GUID is the 128 bit version of the 16 bit version
+            // The GUID here is the 128 bit version of the 16 bit version (0xFFF6)
+            //
             GattDeviceService gattDeviceService = _device.GetGattService(Guid.Parse("0000FFF6-0000-1000-8000-00805F9B34FB"));
 
             GattCharacteristicsResult gattCharacteristicsResult = await gattDeviceService.GetCharacteristicsAsync();
@@ -331,6 +309,17 @@ namespace Matter.Core.BTP
                     segment.ControlFlags = BTPControlFlags.Beginning;
                     segment.MessageLength = (ushort)messageBytes.Length;
                     headerLength += 2; // Add two bytes to the header length to indicate we have the MessageLength.
+
+                    // If we have any outstanding messages to acknowledges, add it here!
+                    //
+                    if (_acknowledgedSequenceCount != _receivedSequenceCount)
+                    {
+                        _acknowledgedSequenceCount = _receivedSequenceCount;
+                        segment.AcknowledgeNumber = (byte)_acknowledgedSequenceCount;
+                        segment.ControlFlags |= BTPControlFlags.Acknowledge;
+
+                        headerLength += 1;
+                    }
                 }
                 else
                 {
