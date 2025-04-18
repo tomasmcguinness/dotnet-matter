@@ -114,6 +114,18 @@ namespace Matter.Core.BTP
             }
         }
 
+        public async Task CloseSession()
+        {
+            try
+            {
+                await _readCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
+            }
+            catch
+            {
+                /* Ignore */
+            }
+        }
+
         public async Task<bool> InitiateAsync()
         {
             GattDeviceServicesResult gattDeviceServicesResult = await _device.GetGattServicesAsync();
