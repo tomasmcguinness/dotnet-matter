@@ -1,5 +1,8 @@
 ﻿namespace Matter.Core
 {
+    /// <summary>
+    /// See Appendix A of the Matter Specification for the TLV encoding. 
+    /// </summary>
     public class MatterTLV
     {
         private List<byte> _values = new();
@@ -21,6 +24,28 @@
             return this;
         }
 
+        public MatterTLV AddArray(long tagNumber)
+        {
+            // This is a Context-Specific Tag (0x01), shifted 5 bits and then OR'd with 0x16
+            // to produce a context tag for Array, 1 byte long
+            // 00110110
+            //
+            _values.Add(0x01 << 5 | 0x16);
+            _values.Add((byte)tagNumber);
+            return this;
+        }
+
+        public MatterTLV AddList(long tagNumber)
+        {
+            // This is a Context-Specific Tag (0x01), shifted 5 bits and then OR'd with 0x17
+            // to produce a context tag for List, one byte long
+            // 00110111
+            //
+            _values.Add(0x01 << 5 | 0x17);
+            _values.Add((byte)tagNumber);
+            return this;
+        }
+
         public MatterTLV EndContainer()
         {
             _values.Add(0x18);
@@ -29,11 +54,11 @@
 
         public MatterTLV Add1OctetString(long tagNumber, byte[] value)
         {
-            // This is a context type 1, shifted 5 bits and then OR'd with 10
+            // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
             // to produce a context tag for Octet String, 1 bytes length
             // 00110010
             //
-            _values.Add((0x1 << 5) | 0x10); // Octet String, 1-octet length
+            _values.Add((0x01 << 5) | 0x10); // Octet String, 1-octet length
             _values.Add((byte)tagNumber);
             _values.Add((byte)(uint)value.Length);
             _values.AddRange(value);
@@ -46,7 +71,7 @@
             // to produce a context tag for Octet String, 4 bytes
             // 00110010
             //
-            _values.Add((0x1 << 5) | 0x12); // Octet String, 4-octet length
+            _values.Add((0x01 << 5) | 0x12); // Octet String, 4-octet length
             _values.Add((byte)tagNumber);
             _values.AddRange(BitConverter.GetBytes((uint)value.Length));
             _values.AddRange(value);
@@ -55,7 +80,7 @@
 
         public MatterTLV AddUShort(long tagNumber, ushort value)
         {
-            _values.Add((0x1 << 5) | 0x5); // Unsigned Integer, 2-octet value
+            _values.Add((0x01 << 5) | 0x5); // Unsigned Integer, 2-octet value
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -65,15 +90,27 @@
             return this;
         }
 
+        public MatterTLV AddUInt8(long tagNumber, byte value)
+        {
+            _values.Add((0x01 << 5) | 0x24); // Unsigned Integer, 1-octet value
+            _values.Add((byte)tagNumber);
+
+            // No length required.
+            //
+            _values.Add(value);
+
+            return this;
+        }
+
         internal void AddBool(int tagNumber, bool v2)
         {
             if (v2)
             {
-                _values.Add((0x1 << 5) | 0x09); // Boolean TRUE
+                _values.Add((0x01 << 5) | 0x09); // Boolean TRUE
             }
             else
             {
-                _values.Add((0x1 << 5) | 0x08); // Boolean FALSE
+                _values.Add((0x01 << 5) | 0x08); // Boolean FALSE
             }
 
             _values.Add((byte)tagNumber);
@@ -222,5 +259,7 @@
         {
             return _values.ToArray();
         }
+
+       
     }
 }

@@ -369,11 +369,24 @@ namespace Matter.Core.Commissioning
                             var readCluster = new MatterTLV();
                             readCluster.AddStructure();
 
-                            readCluster.AddBool(tagNumber: 2, false);
+                            readCluster.AddArray(tagNumber: 0);
+                            readCluster.EndContainer();
+
+                            readCluster.AddArray(tagNumber: 1);
+                            readCluster.EndContainer();
+
+                            readCluster.AddArray(tagNumber: 2);
+                            readCluster.EndContainer();
+
+                            readCluster.AddBool(tagNumber: 3, false);
+
+                            // Add the InteractionModelRevision number.
+                            //
+                            readCluster.AddUInt8(255, 12);
 
                             readCluster.EndContainer();
 
-                            var readClusterMessagePayload = new MessagePayload(pake3);
+                            var readClusterMessagePayload = new MessagePayload(readCluster);
 
                             readClusterMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
@@ -388,42 +401,36 @@ namespace Matter.Core.Commissioning
                             //
                             readClusterMessageFrame.MessageFlags |= MessageFlags.S;
                             readClusterMessageFrame.SecurityFlags = 0x00;
-
-                            // Generate a random SourceNodeId
-                            //
                             readClusterMessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
-                            var memoryStream = new MemoryStream();
-                            var nonceWriter = new BinaryWriter(memoryStream);
+                            //var memoryStream = new MemoryStream();
+                            //var nonceWriter = new BinaryWriter(memoryStream);
 
-                            nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                            nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                            nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+                            //nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
+                            //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
+                            //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
                             
-                            var nonce = memoryStream.ToArray();
+                            //var nonce = memoryStream.ToArray();
+
+                            //memoryStream = new MemoryStream();
+                            //var additionalDataWriter = new BinaryWriter(memoryStream);
+
+                            //additionalDataWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
+                            //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
+                            //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+
+                            //var additionalData = memoryStream.ToArray();
 
 
-                            memoryStream = new MemoryStream();
-                            var additionalDataWriter = new BinaryWriter(memoryStream);
+                            //var messageWriter = new MatterMessageWriter();
+                            //readClusterMessagePayload.Serialize(messageWriter);
+                            //var payload = messageWriter.GetBytes();
 
-                            additionalDataWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                            additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                            additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+                            //byte[] cipherText = new byte[payload.Length];
+                            //byte[] tag = new byte[16];
 
-                            var additionalData = memoryStream.ToArray();
-
-
-                            var messageWriter = new MatterMessageWriter();
-                            readClusterMessagePayload.Serialize(messageWriter);
-                            var payload = messageWriter.GetBytes();
-
-                            byte[] cipherText = new byte[payload.Length];
-                            byte[] tag = new byte[16];
-
-                            var encryptor = new AesCcm(encryptKey);
-                            encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
-
-                            readClusterMessageFrame.MessagePayload = 
+                            //var encryptor = new AesCcm(encryptKey);
+                            //encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
 
                             await secureExchange.SendAsync(readClusterMessageFrame);
 
