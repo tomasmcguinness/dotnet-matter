@@ -35,9 +35,18 @@ I picked this project up again as I've been playing a lot with ESP32 and Matter.
 I have gotten Bluetooth scanning working, uwing the WinRT Bluetooth libraries. This will limit it to Windows 10 for now, but that's okay for now. I've written a blog post on this: https://tomasmcguinness.com/2025/03/21/building-a-net-matter-controller/
 I have also managed to establish a BTP (Bluetooth Transport Protocol) session, getting a handshake reponse from an ESP32-C6 (running the esp-matter Light example). 
 
+### 02/04/2025
 
+Lots of progress in the past two weeks. I have successfully sent one of the PASE messages (PBKDFParamRequest) and received a response with some of the parameters present (PBKDFParamResponse)
+I am now trying to get the Pake1 message working. As this involved crytography, it's proving very difficult! All detailed in these posts:
 
+* https://tomasmcguinness.com/2025/04/12/building-a-net-matter-controller-commissioning-flow-pase-pt2/
+* https://tomasmcguinness.com/2025/04/12/building-a-net-matter-controller-commissioning-flow-pase-pt3/
 
+### 16/04/2025
+
+First milestone reached! I have successfully exchanged the PASE messages. I ended up running the matter.js project and adding lots of logging to help me troubleshoot my code. In the end, I was 99% the way there, but my Transcript Hash was wrong, because of two mistakes in my code. You can read all about it here: https://tomasmcguinness.com/2025/04/15/building-a-net-matter-controller-commissioning-flow-pase-pt4/.
+I'm now starting to look at how to use these PASE keys to speak in a secured way to the device. 
 
 
 

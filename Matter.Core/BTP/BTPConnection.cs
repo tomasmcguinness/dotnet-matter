@@ -57,29 +57,6 @@ namespace Matter.Core.BTP
                         MessageFrame message = new MessageFrame(btnFrame.Payload);
                         await MessageFrameChannel.Writer.WriteAsync(message);
                     }
-
-                    //if ((segment.Flags & BTPFlags.Ending) == 0x0)
-                    //    continue;
-                    //PayloadWriter buffer = new PayloadWriter(segments[0].Length);
-                    //foreach (BTPFrame part in segments)
-                    //    buffer.Write(part.Payload);
-                    //segments.Clear();
-                    //Frame frame = new Frame(buffer.GetPayload().Span, destination);
-                    //if (!frame.Valid)
-                    //{
-                    //    Console.WriteLine("Invalid frame received");
-                    //    continue;
-                    //}
-                    //SessionContext? session = SessionManager.GetSession(frame.SessionID, destination);
-                    //Console.WriteLine(DateTime.Now.ToString("h:mm:ss") + " Received: " + frame.ToString());
-                    //if (session == null)
-                    //{
-                    //    Console.WriteLine("Unknown Session: " + frame.SessionID);
-                    //    continue;
-                    //}
-                    //session.ProcessFrame(frame);
-                    //session.Timestamp = DateTime.Now;
-                    //session.LastActive = DateTime.Now;
                 }
             }
             catch (Exception e)
@@ -117,13 +94,13 @@ namespace Matter.Core.BTP
                 Console.WriteLine($"Sending Standalone Acknowledgement for {_receivedSequenceCount}");
 
                 BTPFrame acknowledgementFrame = new BTPFrame();
-                acknowledgementFrame.Sequence = _sentSequenceNumber++;
+                acknowledgementFrame.Sequence = (byte)_sentSequenceNumber++;
                 acknowledgementFrame.ControlFlags = BTPControlFlags.Acknowledge;
 
                 if (_acknowledgedSequenceCount != _receivedSequenceCount)
                 {
                     _acknowledgedSequenceCount = _receivedSequenceCount;
-                    acknowledgementFrame.AcknowledgeNumber = _receivedSequenceCount;
+                    acknowledgementFrame.AcknowledgeNumber = (byte)_acknowledgedSequenceCount;
                 }
 
                 var writer = new MatterMessageWriter();
@@ -137,11 +114,24 @@ namespace Matter.Core.BTP
             }
         }
 
+        public async Task CloseSession()
+        {
+            try
+            {
+                await _readCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
+            }
+            catch
+            {
+                /* Ignore */
+            }
+        }
+
         public async Task<bool> InitiateAsync()
         {
             GattDeviceServicesResult gattDeviceServicesResult = await _device.GetGattServicesAsync();
 
-            // This GUID is the 128 bit version of the 16 bit version
+            // The GUID here is the 128 bit version of the 16 bit version (0xFFF6)
+            //
             GattDeviceService gattDeviceService = _device.GetGattService(Guid.Parse("0000FFF6-0000-1000-8000-00805F9B34FB"));
 
             GattCharacteristicsResult gattCharacteristicsResult = await gattDeviceService.GetCharacteristicsAsync();
@@ -181,7 +171,6 @@ namespace Matter.Core.BTP
             Console.WriteLine("------------------------------------------");
             Console.WriteLine("HandShake Response Received!");
             Console.WriteLine("Control Flags: {0:X}", handshakeResponseFrame.ControlFlags);
-            //Console.WriteLine("Management Opcode: {0:X}", handshakeResponseFrame.[1]);
             Console.WriteLine("Version: {0}", handshakeResponseFrame.Version);
             Console.WriteLine("ATT High Byte: {0}", handshakeResponseFrame.ATTSize);
             Console.WriteLine("Window Size: {0}", handshakeResponseFrame.WindowSize);
@@ -289,7 +278,7 @@ namespace Matter.Core.BTP
             {
                 foreach (var btpFrame in segments)
                 {
-                    btpFrame.Sequence = _sentSequenceNumber++;
+                    btpFrame.Sequence = (byte)_sentSequenceNumber++;
 
                     Console.WriteLine("Sending BTPFrame segment [{0}] [{1}]...", btpFrame.Sequence, Convert.ToString((byte)btpFrame.ControlFlags, 2).PadLeft(8, '0'));
 
@@ -329,6 +318,7 @@ namespace Matter.Core.BTP
                 // Depending on the type of message, we have different header lengths. E.g. for Beginning
                 // we must inlude the MessageLength in the payload. For Continuing, we don't!
                 // We start with the ControlFlags and the sequence number.
+                //
                 var headerLength = 2;
 
                 if (segments.Count == 0)
@@ -336,6 +326,17 @@ namespace Matter.Core.BTP
                     segment.ControlFlags = BTPControlFlags.Beginning;
                     segment.MessageLength = (ushort)messageBytes.Length;
                     headerLength += 2; // Add two bytes to the header length to indicate we have the MessageLength.
+
+                    // If we have any outstanding messages to acknowledges, add it here!
+                    //
+                    if (_acknowledgedSequenceCount != _receivedSequenceCount)
+                    {
+                        _acknowledgedSequenceCount = _receivedSequenceCount;
+                        segment.AcknowledgeNumber = (byte)_acknowledgedSequenceCount;
+                        segment.ControlFlags |= BTPControlFlags.Acknowledge;
+
+                        headerLength += 1;
+                    }
                 }
                 else
                 {

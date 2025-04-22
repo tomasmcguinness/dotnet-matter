@@ -14,7 +14,7 @@
 
         public async Task SendAsync(MessageFrame message)
         {
-            message.Counter = GlobalCounter.Counter;
+            message.MessageCounter = GlobalCounter.Counter;
             message.MessagePayload.ExchangeID = _exchangeId;
 
             await _connection.SendAsync(message);

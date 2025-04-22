@@ -27,23 +27,39 @@
                 Version = readData[2];
                 ATTSize = BitConverter.ToUInt16(readData, 3);
                 WindowSize = readData[5];
+
+                // Nothing more to do here.
+                return;
             }
 
-            var headerSize = 1;
+            var headerSize = 1; // ControlFlags is mandatory.
 
             if (isManagement)
             {
+                // TODO Grab the Management OpCode.
                 headerSize += 1;
             }
 
             if (isBeginningSegment)
             {
+                MessageLength = BitConverter.ToUInt16(readData, headerSize);
                 headerSize += 2;
             }
 
-            if(!isHandshake)
+            if (isAcknowledgement)
             {
+                AcknowledgeNumber = readData[headerSize];
+                headerSize += 1;
+            }
+
+            if (isBeginningSegment || isContinuingSegment || isEndingSegment)
+            {
+                Sequence = readData[headerSize];
+                
+                headerSize++;
+
                 Payload = new byte[readData.Length - headerSize];
+                
                 Array.Copy(readData, headerSize, Payload, 0, readData.Length - headerSize);
             }
         }
@@ -54,9 +70,9 @@
 
         public ushort MessageLength { get; set; }
 
-        public uint AcknowledgeNumber { get; set; }
+        public byte AcknowledgeNumber { get; set; }
 
-        public uint Sequence { get; set; }
+        public byte Sequence { get; set; }
 
         public ushort Version { get; }
 
