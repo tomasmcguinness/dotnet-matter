@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Runtime.InteropServices.WindowsRuntime;
+﻿using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Channels;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -7,7 +6,7 @@ using Windows.Storage.Streams;
 
 namespace Matter.Core.BTP
 {
-    class BTPSession
+    class BTPConnection : IConnection
     {
         private readonly BluetoothLEDevice _device;
         private readonly Timer _acknowledgementTimer;
@@ -22,9 +21,9 @@ namespace Matter.Core.BTP
 
         private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
-        public Channel<MessageFrame> MessageFrameChannel = Channel.CreateBounded<MessageFrame>(5);
+        private Channel<MessageFrame> MessageFrameChannel = Channel.CreateBounded<MessageFrame>(5);
 
-        public BTPSession(BluetoothLEDevice device)
+        public BTPConnection(BluetoothLEDevice device)
         {
             _device = device;
             _device.ConnectionStatusChanged += _device_ConnectionStatusChanged;
@@ -35,7 +34,7 @@ namespace Matter.Core.BTP
         {
             try
             {
-               var segments = new List<BTPFrame>();
+                var segments = new List<BTPFrame>();
 
                 while (true)
                 {
@@ -53,12 +52,12 @@ namespace Matter.Core.BTP
                     // We have received the end of a sequence of messages.
                     // We need to take all the Payloads and stick them together.
                     //
-                    if(isEnding)
+                    if (isEnding)
                     {
                         MessageFrame message = new MessageFrame(btnFrame.Payload);
                         await MessageFrameChannel.Writer.WriteAsync(message);
                     }
-                    
+
                     //if ((segment.Flags & BTPFlags.Ending) == 0x0)
                     //    continue;
                     //PayloadWriter buffer = new PayloadWriter(segments[0].Length);
@@ -194,7 +193,7 @@ namespace Matter.Core.BTP
             //
             _isConnected = handshakeResponseFrame.Version == 0x04;
 
-            if(_isConnected)
+            if (_isConnected)
             {
                 await Task.Factory.StartNew(ListenForResponses);
             }
@@ -261,7 +260,12 @@ namespace Matter.Core.BTP
             Console.WriteLine("------------------------------------------");
         }
 
-        internal async Task SendAsync(MessageFrame messageFrame)
+        public async Task<MessageFrame> ReadAsync()
+        {
+            return await MessageFrameChannel.Reader.ReadAsync();
+        }
+
+        public async Task SendAsync(MessageFrame messageFrame)
         {
             Console.WriteLine("Sending message over BTP Session");
 

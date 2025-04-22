@@ -1,4 +1,5 @@
 ﻿using Matter.Core.BTP;
+using Matter.Core.Discovery;
 using System.Security.Cryptography;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
@@ -20,7 +21,15 @@ namespace Matter.Core.Commissioning
 
         public void PerformDiscovery()
         {
-            StartBluetoothDiscovery();
+            StartNetworkDiscovery().Wait();
+
+            //StartBluetoothDiscovery();
+        }
+
+        private async Task StartNetworkDiscovery()
+        {
+            var discoverer = new DnsDiscoverer();
+            await discoverer.DiscoverCommissionableNodes();
         }
 
         private void StartBluetoothDiscovery()
@@ -35,7 +44,7 @@ namespace Matter.Core.Commissioning
             bluetoothLEAdvertisementWatcher.Start();
         }
 
-        private BTPSession _btpSession;
+        private BTPConnection _btpSession;
         private int _matterMessageCounter = 0;
 
         private async void BluetoothLEAdvertisementWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
@@ -79,7 +88,7 @@ namespace Matter.Core.Commissioning
                         Console.WriteLine("Matter device has named {0}", device.Name);
                         Console.WriteLine("Starting BTPSession");
 
-                        _btpSession = new BTPSession(device);
+                        _btpSession = new BTPConnection(device);
 
                         var isConnected = await _btpSession.InitiateAsync();
 
@@ -167,7 +176,7 @@ namespace Matter.Core.Commissioning
 
             // Give the thread 20 seconds to complete commissioning.
             //
-            resetEvent.WaitOne(20000);
+            resetEvent.WaitOne(60000);
         }
     }
 }
