@@ -78,9 +78,21 @@
             return this;
         }
 
-        public MatterTLV AddUShort(long tagNumber, ushort value)
+        public MatterTLV AddUInt8(long tagNumber, byte value)
         {
-            _values.Add((0x01 << 5) | 0x5); // Unsigned Integer, 2-octet value
+            _values.Add((0x01 << 5) | 0x4);
+            _values.Add((byte)tagNumber);
+
+            // No length required.
+            //
+            _values.Add(value);
+
+            return this;
+        }
+
+        public MatterTLV AddUInt16(long tagNumber, ushort value)
+        {
+            _values.Add((0x01 << 5) | 0x5);
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -90,14 +102,26 @@
             return this;
         }
 
-        public MatterTLV AddUInt8(long tagNumber, byte value)
+        public MatterTLV AddUInt32(long tagNumber, uint value)
         {
-            _values.Add((0x01 << 5) | 0x24); // Unsigned Integer, 1-octet value
+            _values.Add((0x01 << 5) | 0x6);
             _values.Add((byte)tagNumber);
 
             // No length required.
             //
-            _values.Add(value);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddUInt64(long tagNumber, ulong value)
+        {
+            _values.Add((0x01 << 5) | 0x7);
+            _values.Add((byte)tagNumber);
+
+            // No length required.
+            //
+            _values.AddRange(BitConverter.GetBytes(value));
 
             return this;
         }
@@ -260,6 +284,6 @@
             return _values.ToArray();
         }
 
-       
+
     }
 }

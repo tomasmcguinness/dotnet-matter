@@ -5,11 +5,11 @@ namespace Matter.Core.Sessions
 {
     internal class UnsecureSession : ISession
     {
-        private BTPSession _btpSession;
+        private IConnection _connection;
 
-        public UnsecureSession(BTPSession btpSession)
+        public UnsecureSession(IConnection connection)
         {
-            _btpSession = btpSession;
+            _connection = connection;
         }
 
         public MessageExchange CreateExchange()
@@ -34,12 +34,12 @@ namespace Matter.Core.Sessions
 
         public async Task SendAsync(MessageFrame message)
         {
-            await _btpSession.SendAsync(message);
+            await _connection.SendAsync(message);
         }
 
         public async Task<MessageFrame> ReadAsync()
         {
-            return await _btpSession.MessageFrameChannel.Reader.ReadAsync();
+            return await _connection.ReadAsync();
         }
     }
 }

@@ -1,15 +1,17 @@
-﻿namespace Matter.Core
+﻿using Matter.Core.Sessions;
+
+namespace Matter.Core
 {
     class MessageExchange
     {
         private ushort _exchangeId;
-        private IConnection _connection;
+        private ISession _session;
 
         // For this, the role will always be Initiator.
-        public MessageExchange(ushort exchangeId, IConnection connection)
+        public MessageExchange(ushort exchangeId, ISession session)
         {
             _exchangeId = exchangeId;
-            _connection = connection;
+            _session = session;
         }
 
         public async Task SendAsync(MessageFrame message)
@@ -17,14 +19,14 @@
             message.MessageCounter = GlobalCounter.Counter;
             message.MessagePayload.ExchangeID = _exchangeId;
 
-            await _connection.SendAsync(message);
+            await _session.SendAsync(message);
         }
 
         internal async Task<MessageFrame> ReceiveAsync()
         {
             // Wait for the btpSession to publish a MessageFrame
             //
-            return await _connection.ReadAsync();
+            return await _session.ReadAsync();
         }
     }
 }

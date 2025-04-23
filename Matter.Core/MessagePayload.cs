@@ -2,6 +2,11 @@
 {
     public class MessagePayload
     {
+        public MessagePayload()
+        {
+            Payload = null;
+        }
+
         public MessagePayload(MatterTLV payload)
         {
             Payload = payload;
@@ -11,11 +16,9 @@
         {
             ExchangeFlags = (ExchangeFlags)messagePayload[0];
             ProtocolOpCode = messagePayload[1];
-            ExchangeID = BitConverter.ToUInt16(messagePayload, 2);
-            // TODO Protovol VendorId
-            ProtocolId = BitConverter.ToUInt16(messagePayload, 4);
-            // TODO Acknowledged Message Counter
-            // TODO Secured Extensions
+            ProtocolId = BitConverter.ToUInt16(messagePayload, 2);
+            ExchangeID = BitConverter.ToUInt16(messagePayload, 4);
+
             Payload = new MatterTLV(messagePayload.AsSpan<byte>().Slice(6).ToArray());
         }
 
@@ -23,11 +26,13 @@
 
         public byte ProtocolOpCode { get; set; }
 
-        public ushort ProtocolId { get; set; }
-
         public ushort ExchangeID { get; set; }
 
-        public MatterTLV Payload { get; set; }
+        public ushort ProtocolId { get; set; }
+
+        public uint AcknowledgedMessageCounter { get; set; }
+
+        public MatterTLV? Payload { get; set; }
 
         internal void Serialize(MatterMessageWriter writer)
         {
@@ -36,9 +41,17 @@
             writer.Write(ExchangeID);
             writer.Write(ProtocolId);
 
+            if ((ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
+            {
+                writer.Write(AcknowledgedMessageCounter);
+            }
+
             // Write the bytes of the payload!
             //
-            Payload.Serialize(writer);
-        }        
+            if (Payload is not null)
+            {
+                Payload.Serialize(writer);
+            }
+        }
     }
 }

@@ -1,5 +1,10 @@
 ﻿using Matter.Core.BTP;
+using Matter.Core.Cryptography;
 using Matter.Core.Discovery;
+using Matter.Core.Sessions;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Parameters;
 using System.Security.Cryptography;
 using System.Text;
 using Windows.Devices.Bluetooth;
@@ -116,8 +121,8 @@ namespace Matter.Core.Commissioning
                             //
                             var initiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                             PBKDFParamRequest.Add4OctetString(1, initiatorRandomBytes);
-                            PBKDFParamRequest.AddUShort(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
-                            PBKDFParamRequest.AddUShort(3, 0);
+                            PBKDFParamRequest.AddUInt16(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
+                            PBKDFParamRequest.AddUInt16(3, 0);
                             PBKDFParamRequest.AddBool(4, false);
                             PBKDFParamRequest.EndContainer();
 

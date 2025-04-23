@@ -1,7 +1,8 @@
-﻿
+﻿using System.Text;
+
 namespace Matter.Core
 {
-    class MessageFrame
+    public class MessageFrame
     {
         public MessageFrame(MessagePayload messagePayload)
         {
@@ -69,6 +70,12 @@ namespace Matter.Core
             }
 
             MessagePayload.Serialize(writer);
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            return sb.ToString();
         }
     }
 }

@@ -1,17 +1,16 @@
-﻿using Matter.Core.BTP;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
 namespace Matter.Core.Sessions
 {
     internal class PaseSecureSession : ISession
     {
-        private BTPSession _btpSession;
+        private IConnection _connection;
 
         private ushort _sessionId;
 
-        public PaseSecureSession(BTPSession btpSession)
+        public PaseSecureSession(IConnection connection)
         {
-            _btpSession = btpSession;
+            _connection = connection;
 
             using (var rng = RandomNumberGenerator.Create())
             {
@@ -51,12 +50,12 @@ namespace Matter.Core.Sessions
 
             //message.SessionID = _sessionId;
 
-            await _btpSession.SendAsync(message);
+            await _connection.SendAsync(message);
         }
 
         public async Task<MessageFrame> ReadAsync()
         {
-            var message = await _btpSession.MessageFrameChannel.Reader.ReadAsync();
+            var message = await _connection.ReadAsync();
 
             // TODO Decrypt the message.
 
