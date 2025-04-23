@@ -35,6 +35,15 @@
             return this;
         }
 
+        public MatterTLV AddArray()
+        {
+            // This is an anonymous tag, shifted 5 bits and then OR'd with 0x22
+            // 00010110
+            //
+            _values.Add(0x16);
+            return this;
+        }
+
         public MatterTLV AddList(long tagNumber)
         {
             // This is a Context-Specific Tag (0x01), shifted 5 bits and then OR'd with 0x17
@@ -43,6 +52,12 @@
             //
             _values.Add(0x01 << 5 | 0x17);
             _values.Add((byte)tagNumber);
+            return this;
+        }
+
+        public MatterTLV AddList()
+        {
+            _values.Add(0x17);
             return this;
         }
 

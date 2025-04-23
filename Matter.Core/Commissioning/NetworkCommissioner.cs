@@ -12,6 +12,7 @@ using System.Text;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Storage.Streams;
+using Windows.UI.Composition;
 
 namespace Matter.Core.Commissioning
 {
@@ -316,7 +317,8 @@ namespace Matter.Core.Commissioning
 
                 readCluster.AddArray(tagNumber: 0);
 
-                readCluster.AddList(tagNumber: 0);
+                readCluster.AddList();
+
                 readCluster.AddBool(tagNumber: 0, false);
                 readCluster.AddUInt64(tagNumber: 1, 0x00); // NodeId
                 readCluster.AddUInt16(tagNumber: 2, 0x00); // Endpoint 0x00
@@ -324,9 +326,9 @@ namespace Matter.Core.Commissioning
                 readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - vendor name
                 readCluster.AddUInt16(tagNumber: 5, 0x00); // List Index 0x00
                 readCluster.AddUInt32(tagNumber: 6, 0x00); // Wildcard flags
-                readCluster.EndContainer();
+                readCluster.EndContainer(); // Close the list
 
-                readCluster.EndContainer();
+                readCluster.EndContainer(); // Close the array
 
                 readCluster.AddArray(tagNumber: 1);
                 readCluster.EndContainer();
@@ -394,10 +396,12 @@ namespace Matter.Core.Commissioning
 
                 // The response we get should be an InteractionMessage OpCode 
                 //
-                if(readClusterResponseMessageFrame.MessagePayload.ProtocolOpCode == 0x1)
+                if (readClusterResponseMessageFrame.MessagePayload.ProtocolOpCode == 0x1)
                 {
 
                 }
+
+                await Task.Delay(5000);
             }
             catch
             {
