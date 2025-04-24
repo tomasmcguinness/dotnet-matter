@@ -1,18 +1,11 @@
-﻿using Matter.Core.BTP;
-using Matter.Core.Cryptography;
-using Matter.Core.Discovery;
+﻿using Matter.Core.Cryptography;
 using Matter.Core.Sessions;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
-using System.Net;
-using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Storage.Streams;
-using Windows.UI.Composition;
+using System.Windows.Forms;
 
 namespace Matter.Core.Commissioning
 {
@@ -87,12 +80,13 @@ namespace Matter.Core.Commissioning
                 messageFrame.MessageFlags |= MessageFlags.S;
                 messageFrame.SessionID = 0x00;
                 messageFrame.SecurityFlags = 0x00;
+                messageFrame.MessageCounter = GlobalCounter.Counter;
 
                 // Generate a random SourceNodeId
                 //
-                Random random = new Random();
-                long sourceNodeId = random.NextInt64(1, long.MaxValue);
-                messageFrame.SourceNodeID = (ulong)sourceNodeId;
+                //Random random = new Random();
+                //long sourceNodeId = random.NextInt64(1, long.MaxValue);
+                //messageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(messageFrame);
                 var responseMessageFrame = await unsecureExchange.ReceiveAsync();
@@ -118,6 +112,8 @@ namespace Matter.Core.Commissioning
                 var initiatorRandomBytes2 = PBKDFParamResponse.GetOctetString(1);
                 var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
                 var responderSessionId = PBKDFParamResponse.GetUnsignedShort(3);
+
+                Console.WriteLine("Responder Session Id: {0}", responderSessionId);
 
                 PBKDFParamResponse.OpenStructure(4);
 
@@ -197,10 +193,11 @@ namespace Matter.Core.Commissioning
                 pake1MessageFrame.MessageFlags |= MessageFlags.S;
                 pake1MessageFrame.SessionID = 0x00;
                 pake1MessageFrame.SecurityFlags = 0x00;
+                pake1MessageFrame.MessageCounter = GlobalCounter.Counter;
 
                 // Generate a random SourceNodeId
                 //
-                pake1MessageFrame.SourceNodeID = (ulong)sourceNodeId;
+                //pake1MessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(pake1MessageFrame);
 
@@ -269,10 +266,11 @@ namespace Matter.Core.Commissioning
                 pake3MessageFrame.MessageFlags |= MessageFlags.S;
                 pake3MessageFrame.SessionID = 0x00;
                 pake3MessageFrame.SecurityFlags = 0x00;
+                pake3MessageFrame.MessageCounter = GlobalCounter.Counter;
 
                 // Generate a random SourceNodeId
                 //
-                pake3MessageFrame.SourceNodeID = (ulong)sourceNodeId;
+                //pake3MessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(pake3MessageFrame);
 
@@ -303,6 +301,8 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
                 Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
                 Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
+
+                Console.WriteLine(format: "PeerSessionId: {0}", pakeFinishedMessageFrame.SessionID);
 
                 // TODO Pass in the keys
                 //
@@ -359,36 +359,48 @@ namespace Matter.Core.Commissioning
                 //
                 readClusterMessageFrame.MessageFlags |= MessageFlags.S;
                 readClusterMessageFrame.SecurityFlags = 0x00;
-                readClusterMessageFrame.SourceNodeID = (ulong)sourceNodeId;
+                readClusterMessageFrame.SourceNodeID = 0x00; //(ulong)sourceNodeId;
+                readClusterMessageFrame.SessionID = responderSessionId;// pakeFinishedMessageFrame.SessionID;
+                readClusterMessageFrame.MessageCounter = GlobalCounter.Counter;
 
-                //var memoryStream = new MemoryStream();
-                //var nonceWriter = new BinaryWriter(memoryStream);
+                var memoryStream = new MemoryStream();
+                var nonceWriter = new BinaryWriter(memoryStream);
 
-                //nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+                nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
+                nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
+                nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
 
-                //var nonce = memoryStream.ToArray();
+                var nonce = memoryStream.ToArray();
 
-                //memoryStream = new MemoryStream();
-                //var additionalDataWriter = new BinaryWriter(memoryStream);
+                Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
 
-                //additionalDataWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+                memoryStream = new MemoryStream();
+                var additionalDataWriter = new BinaryWriter(memoryStream);
 
-                //var additionalData = memoryStream.ToArray();
+                additionalDataWriter.Write((byte)readClusterMessageFrame.MessageFlags);
+                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SessionID));
+                additionalDataWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
+                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
+                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
+                //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.DestinationNodeId));
 
+                var additionalData = memoryStream.ToArray();
 
-                //var messageWriter = new MatterMessageWriter();
-                //readClusterMessagePayload.Serialize(messageWriter);
-                //var payload = messageWriter.GetBytes();
+                Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
-                //byte[] cipherText = new byte[payload.Length];
-                //byte[] tag = new byte[16];
+                var messageWriter = new MatterMessageWriter();
+                readClusterMessagePayload.Serialize(messageWriter);
+                var payload = messageWriter.GetBytes();
 
-                //var encryptor = new AesCcm(encryptKey);
-                //encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
+                byte[] cipherText = new byte[payload.Length];
+                byte[] tag = new byte[16];
+
+                var encryptor = new AesCcm(encryptKey);
+                encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
+
+                readClusterMessageFrame.EncryptedMessagePayload = cipherText;
+
+                Console.WriteLine("Encrypted Payload: {0}", BitConverter.ToString(cipherText));
 
                 await secureExchange.SendAsync(readClusterMessageFrame);
 

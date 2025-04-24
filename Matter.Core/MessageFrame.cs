@@ -57,6 +57,9 @@ namespace Matter.Core
 
         public MessagePayload MessagePayload { get; set; }
 
+        public byte[]? EncryptedMessagePayload { get; set; }
+
+
         internal void Serialize(MatterMessageWriter writer)
         {
             writer.Write((byte)MessageFlags);
@@ -69,7 +72,14 @@ namespace Matter.Core
                 writer.Write(SourceNodeID);
             }
 
-            MessagePayload.Serialize(writer);
+            if (EncryptedMessagePayload is not null)
+            {
+                writer.Write(EncryptedMessagePayload);
+            }
+            else
+            {
+                MessagePayload.Serialize(writer);
+            }
         }
 
         public override string ToString()

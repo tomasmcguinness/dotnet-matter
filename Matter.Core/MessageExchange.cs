@@ -16,7 +16,6 @@ namespace Matter.Core
 
         public async Task SendAsync(MessageFrame message)
         {
-            message.MessageCounter = GlobalCounter.Counter;
             message.MessagePayload.ExchangeID = _exchangeId;
 
             await _session.SendAsync(message);
