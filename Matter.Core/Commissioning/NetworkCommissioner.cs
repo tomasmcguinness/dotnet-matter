@@ -294,8 +294,8 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
 
-                var decryptKey = keys.AsSpan().Slice(0, 16).ToArray();
-                var encryptKey = keys.AsSpan().Slice(16, 16).ToArray();
+                var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
+                var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                 var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
 
                 Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
@@ -398,9 +398,22 @@ namespace Matter.Core.Commissioning
                 var encryptor = new AesCcm(encryptKey);
                 encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
 
-                readClusterMessageFrame.EncryptedMessagePayload = cipherText;
+                var totalPayload = cipherText.Concat(tag);
 
-                Console.WriteLine("Encrypted Payload: {0}", BitConverter.ToString(cipherText));
+                //readClusterMessageFrame.EncryptedMessagePayload = cipherText;
+                readClusterMessageFrame.EncryptedMessagePayload = totalPayload.ToArray();
+
+                //byte[] plainText = new byte[payload.Length];
+
+                //var decryptor = new AesCcm(decryptKey);
+                //decryptor.Decrypt(nonce, totalPayload.ToArray(), tag, plainText, additionalData);
+
+                //if (Enumerable.SequenceEqual(plainText, payload))
+                //{
+                //    Console.WriteLine("Decrypted successfully!");
+                //}
+
+                //Console.WriteLine("Encrypted Payload: {0}", BitConverter.ToString(cipherText));
 
                 await secureExchange.SendAsync(readClusterMessageFrame);
 
