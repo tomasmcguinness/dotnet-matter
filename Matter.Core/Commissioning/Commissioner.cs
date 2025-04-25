@@ -370,7 +370,7 @@ namespace Matter.Core.Commissioning
 
                             // TODO Pass in the keys
                             //
-                            var secureSession = new PaseSecureSession(_btpSession);
+                            var secureSession = new PaseSecureSession(_btpSession, encryptKey);
 
                             // We need to create a new Exchange, one that's secure.
                             //

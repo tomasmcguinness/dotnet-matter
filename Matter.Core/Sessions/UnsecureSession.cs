@@ -1,5 +1,4 @@
-﻿using Matter.Core.BTP;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
 namespace Matter.Core.Sessions
 {
@@ -22,6 +21,7 @@ namespace Matter.Core.Sessions
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(randomBytes);
+
                 ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
 
                 var exchangeId = trueRandom;
@@ -32,14 +32,25 @@ namespace Matter.Core.Sessions
             }
         }
 
-        public async Task SendAsync(MessageFrame message)
+        public async Task SendAsync(byte[] message)
         {
             await _connection.SendAsync(message);
         }
 
-        public async Task<MessageFrame> ReadAsync()
+        public async Task<byte[]> ReadAsync()
         {
             return await _connection.ReadAsync();
+        }
+
+        public byte[] Encode(MessageFrame messageFrame)
+        {
+            var parts = new MessageFrameParts(messageFrame);
+            return parts.Header.Concat(parts.Payload).ToArray();
+        }
+
+        public MessageFrame Decode(byte[] payload)
+        {
+            return new MessageFrame(payload);
         }
     }
 }

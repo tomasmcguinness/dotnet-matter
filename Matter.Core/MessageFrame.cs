@@ -59,29 +59,6 @@ namespace Matter.Core
 
         public byte[]? EncryptedMessagePayload { get; set; }
 
-
-        internal void Serialize(MatterMessageWriter writer)
-        {
-            writer.Write((byte)MessageFlags);
-            writer.Write(SessionID);
-            writer.Write((byte)SecurityFlags);
-            writer.Write(MessageCounter);
-
-            if ((MessageFlags & MessageFlags.S) != 0)
-            {
-                writer.Write(SourceNodeID);
-            }
-
-            if (EncryptedMessagePayload is not null)
-            {
-                writer.Write(EncryptedMessagePayload);
-            }
-            else
-            {
-                MessagePayload.Serialize(writer);
-            }
-        }
-
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();

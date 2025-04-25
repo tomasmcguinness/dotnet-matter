@@ -4,13 +4,14 @@ namespace Matter.Core.Sessions
 {
     internal class PaseSecureSession : ISession
     {
-        private IConnection _connection;
+        private readonly IConnection _connection;
+        private readonly ushort _sessionId;
+        private readonly byte[] _encryptionKey;
 
-        private ushort _sessionId;
-
-        public PaseSecureSession(IConnection connection)
+        public PaseSecureSession(IConnection connection, byte[] encryptionKey)
         {
             _connection = connection;
+            _encryptionKey = encryptionKey;
 
             using (var rng = RandomNumberGenerator.Create())
             {
@@ -44,7 +45,7 @@ namespace Matter.Core.Sessions
             }
         }
 
-        public async Task SendAsync(MessageFrame message)
+        public async Task SendAsync(byte[] message)
         {
             // TODO Encrypt the message.
 
@@ -53,13 +54,59 @@ namespace Matter.Core.Sessions
             await _connection.SendAsync(message);
         }
 
-        public async Task<MessageFrame> ReadAsync()
+        public async Task<byte[]> ReadAsync()
         {
             var message = await _connection.ReadAsync();
 
             // TODO Decrypt the message.
 
             return message;
+        }
+
+        public byte[] Encode(MessageFrame messageFrame)
+        {
+            var parts = new MessageFrameParts(messageFrame);
+
+            var memoryStream = new MemoryStream();
+            var nonceWriter = new BinaryWriter(memoryStream);
+
+            nonceWriter.Write((byte)messageFrame.SecurityFlags);
+            nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+
+            var nonce = memoryStream.ToArray();
+
+            Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
+
+            memoryStream = new MemoryStream();
+            var additionalDataWriter = new BinaryWriter(memoryStream);
+
+            additionalDataWriter.Write((byte)messageFrame.MessageFlags);
+            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+            additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
+            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+
+            var additionalData = memoryStream.ToArray();
+
+            Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
+
+            byte[] encryptedPayload = new byte[parts.Payload.Length];
+            byte[] tag = new byte[16];
+
+            var encryptor = new AesCcm(_encryptionKey);
+            encryptor.Encrypt(nonce, parts.Payload, encryptedPayload, tag, additionalData);
+
+            var totalPayload = encryptedPayload.Concat(tag);
+
+            return parts.Header.Concat(totalPayload).ToArray();
+        }
+
+        public MessageFrame Decode(byte[] payload)
+        {
+            // Run this through the decoder.
+            //
+            return new MessageFrame(payload);
         }
     }
 }

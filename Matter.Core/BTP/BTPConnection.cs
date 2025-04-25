@@ -21,7 +21,7 @@ namespace Matter.Core.BTP
 
         private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
-        private Channel<MessageFrame> MessageFrameChannel = Channel.CreateBounded<MessageFrame>(5);
+        private Channel<byte[]> ReceivedDataChannel = Channel.CreateBounded<byte[]>(5);
 
         public BTPConnection(BluetoothLEDevice device)
         {
@@ -50,12 +50,11 @@ namespace Matter.Core.BTP
                     segments.Add(btnFrame);
 
                     // We have received the end of a sequence of messages.
-                    // We need to take all the Payloads and stick them together.
+                    // TODO We need to take all the Payloads and stick them together.
                     //
                     if (isEnding)
                     {
-                        MessageFrame message = new MessageFrame(btnFrame.Payload);
-                        await MessageFrameChannel.Writer.WriteAsync(message);
+                        await ReceivedDataChannel.Writer.WriteAsync(btnFrame.Payload);
                     }
                 }
             }
@@ -249,26 +248,26 @@ namespace Matter.Core.BTP
             Console.WriteLine("------------------------------------------");
         }
 
-        public async Task<MessageFrame> ReadAsync()
+        public async Task<byte[]> ReadAsync()
         {
-            return await MessageFrameChannel.Reader.ReadAsync();
+            return await ReceivedDataChannel.Reader.ReadAsync();
         }
 
-        public async Task SendAsync(MessageFrame messageFrame)
+        public async Task SendAsync(byte[] bytes)
         {
             Console.WriteLine("Sending message over BTP Session");
 
-            var writer = new MatterMessageWriter();
+            //var writer = new MatterMessageWriter();
 
-            messageFrame.Serialize(writer);
+            //messageFrame.Serialize(writer);
 
-            var message = writer.GetBytes();
+            //var message = writer.GetBytes();
 
-            Console.WriteLine("MessageFrame is {0} bytes in length", message.Length);
+            Console.WriteLine("MessageFrame is {0} bytes in length", bytes.Length);
 
-            Console.WriteLine(string.Join(" ", message.Select(x => x.ToString("X2"))));
+            //Console.WriteLine(string.Join(" ", message.Select(x => x.ToString("X2"))));
 
-            BTPFrame[] segments = GetSegments(message);
+            BTPFrame[] segments = GetSegments(bytes);
 
             Console.WriteLine("Incoming MessageFrame has been split to {0} BTPFrame segments", segments.Length);
 

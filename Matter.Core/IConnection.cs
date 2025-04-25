@@ -3,7 +3,8 @@ namespace Matter.Core
 {
     internal interface IConnection
     {
-        Task<MessageFrame> ReadAsync();
-        Task SendAsync(MessageFrame message);
+        Task<byte[]> ReadAsync();
+
+        Task SendAsync(byte[] message);
     }
 }

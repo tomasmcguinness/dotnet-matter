@@ -306,7 +306,7 @@ namespace Matter.Core.Commissioning
 
                 // TODO Pass in the keys
                 //
-                var secureSession = new PaseSecureSession(udpConnection);
+                var secureSession = new PaseSecureSession(udpConnection, encryptKey);
 
                 // We need to create a new Exchange, one that's secure.
                 //
@@ -362,58 +362,6 @@ namespace Matter.Core.Commissioning
                 readClusterMessageFrame.SourceNodeID = 0x00; //(ulong)sourceNodeId;
                 readClusterMessageFrame.SessionID = responderSessionId;// pakeFinishedMessageFrame.SessionID;
                 readClusterMessageFrame.MessageCounter = GlobalCounter.Counter;
-
-                var memoryStream = new MemoryStream();
-                var nonceWriter = new BinaryWriter(memoryStream);
-
-                nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
-
-                var nonce = memoryStream.ToArray();
-
-                Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
-
-                memoryStream = new MemoryStream();
-                var additionalDataWriter = new BinaryWriter(memoryStream);
-
-                additionalDataWriter.Write((byte)readClusterMessageFrame.MessageFlags);
-                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SessionID));
-                additionalDataWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
-                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
-                additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
-                //additionalDataWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.DestinationNodeId));
-
-                var additionalData = memoryStream.ToArray();
-
-                Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
-
-                var messageWriter = new MatterMessageWriter();
-                readClusterMessagePayload.Serialize(messageWriter);
-                var payload = messageWriter.GetBytes();
-
-                byte[] cipherText = new byte[payload.Length];
-                byte[] tag = new byte[16];
-
-                var encryptor = new AesCcm(encryptKey);
-                encryptor.Encrypt(nonce, payload, cipherText, tag, additionalData);
-
-                var totalPayload = cipherText.Concat(tag);
-
-                //readClusterMessageFrame.EncryptedMessagePayload = cipherText;
-                readClusterMessageFrame.EncryptedMessagePayload = totalPayload.ToArray();
-
-                //byte[] plainText = new byte[payload.Length];
-
-                //var decryptor = new AesCcm(decryptKey);
-                //decryptor.Decrypt(nonce, totalPayload.ToArray(), tag, plainText, additionalData);
-
-                //if (Enumerable.SequenceEqual(plainText, payload))
-                //{
-                //    Console.WriteLine("Decrypted successfully!");
-                //}
-
-                //Console.WriteLine("Encrypted Payload: {0}", BitConverter.ToString(cipherText));
 
                 await secureExchange.SendAsync(readClusterMessageFrame);
 

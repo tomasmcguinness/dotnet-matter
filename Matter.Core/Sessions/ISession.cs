@@ -4,8 +4,12 @@
     {
         MessageExchange CreateExchange();
 
-        Task<MessageFrame> ReadAsync();
+        byte[] Encode(MessageFrame message);
 
-        Task SendAsync(MessageFrame message);
+        MessageFrame Decode(byte[] payload);
+
+        Task<byte[]> ReadAsync();
+
+        Task SendAsync(byte[] payload);
     }
 }
