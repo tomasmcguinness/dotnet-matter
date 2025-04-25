@@ -360,8 +360,8 @@ namespace Matter.Core.Commissioning
 
                             Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
 
-                            var decryptKey = keys.AsSpan().Slice(0, 16).ToArray();
-                            var encryptKey = keys.AsSpan().Slice(16, 16).ToArray();
+                            var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
+                            var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                             var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
 
                             Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
@@ -370,7 +370,7 @@ namespace Matter.Core.Commissioning
 
                             // TODO Pass in the keys
                             //
-                            var secureSession = new PaseSecureSession(_btpSession, encryptKey);
+                            var secureSession = new PaseSecureSession(_btpSession, encryptKey, decryptKey);
 
                             // We need to create a new Exchange, one that's secure.
                             //

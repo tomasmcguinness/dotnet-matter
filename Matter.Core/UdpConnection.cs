@@ -9,8 +9,8 @@ namespace Matter.Core
 
         public UdpConnection()
         {
-            _udpClient = new UdpClient(11000);
-            IPAddress address = IPAddress.Parse("172.16.47.60");
+            _udpClient = new UdpClient(0);
+            IPAddress address = IPAddress.Parse("127.0.0.1");
             _udpClient.Connect(address, 5540);
         }
 

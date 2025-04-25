@@ -50,7 +50,10 @@ namespace Matter.Core.Sessions
 
         public MessageFrame Decode(byte[] payload)
         {
-            return new MessageFrame(payload);
+            var messageParts = new MessageFrameParts(payload);
+            var messageFrame = messageParts.MessageFrameWithHeaders();
+            messageFrame.MessagePayload = new MessagePayload(messageParts.Payload);
+            return messageFrame;
         }
     }
 }

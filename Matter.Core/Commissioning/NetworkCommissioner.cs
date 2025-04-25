@@ -306,7 +306,7 @@ namespace Matter.Core.Commissioning
 
                 // TODO Pass in the keys
                 //
-                var secureSession = new PaseSecureSession(udpConnection, encryptKey);
+                var secureSession = new PaseSecureSession(udpConnection, encryptKey, decryptKey);
 
                 // We need to create a new Exchange, one that's secure.
                 //
