@@ -113,6 +113,9 @@ namespace Matter.Core.Sessions
             //
             var parts = new MessageFrameParts(payload);
 
+            Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
+            Console.WriteLine("Incoming Payload: {0}", BitConverter.ToString(parts.Payload));
+
             var messageFrame = parts.MessageFrameWithHeaders();
 
             var memoryStream = new MemoryStream();
@@ -139,11 +142,13 @@ namespace Matter.Core.Sessions
 
             Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
-            byte[] decryptedPayload = new byte[parts.Payload.Length];
-            byte[] tag = new byte[16];
+            byte[] decryptedPayload = new byte[parts.Payload.Length - 16];
+
+            var tag = parts.Payload.AsSpan().Slice(parts.Payload.Length - 16, 16);
+            var encryptedPayload = parts.Payload.AsSpan().Slice(0, parts.Payload.Length - 16);
 
             var encryptor = new AesCcm(_decryptionKey);
-            encryptor.Decrypt(nonce, parts.Payload, decryptedPayload, tag, additionalData);
+            encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
 
             messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 

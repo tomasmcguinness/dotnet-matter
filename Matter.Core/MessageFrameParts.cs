@@ -48,7 +48,7 @@
             if ((messageFlags & MessageFlags.DSIZ2) != 0)
             {
                 // Account for the SourceNodeId (8 bytes)
-                headerLength += 2;
+                headerLength += 8;
             }
 
             var messageHeader = new byte[headerLength];
@@ -87,13 +87,12 @@
             {
                 messageFrame.DestinationNodeId = BitConverter.ToUInt64(Header, headerLength);
                 headerLength += 8;
-
             }
 
             if ((messageFrame.MessageFlags & MessageFlags.DSIZ2) != 0)
             {
-                messageFrame.SourceNodeID = BitConverter.ToUInt16(Header, headerLength);
-                headerLength += 2;
+                messageFrame.SourceNodeID = BitConverter.ToUInt64(Header, headerLength);
+                headerLength += 8;
             }
 
             return messageFrame;

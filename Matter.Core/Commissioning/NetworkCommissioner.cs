@@ -369,9 +369,13 @@ namespace Matter.Core.Commissioning
 
                 // The response we get should be an InteractionMessage OpCode 
                 //
-                if (readClusterResponseMessageFrame.MessagePayload.ProtocolOpCode == 0x1)
+                if (readClusterResponseMessageFrame.MessagePayload.ProtocolOpCode == 0x5)
                 {
+                    var reportData = readClusterResponseMessageFrame.MessagePayload.Payload;
 
+                    Console.WriteLine("Payload: {0}", BitConverter.ToString(reportData.GetBytes()));
+
+                    Console.WriteLine(reportData.ToString());
                 }
 
                 await Task.Delay(5000);
