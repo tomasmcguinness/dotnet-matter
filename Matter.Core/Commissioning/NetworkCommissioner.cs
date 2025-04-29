@@ -1,11 +1,9 @@
-﻿using Matter.Core.Certificates;
-using Matter.Core.Cryptography;
+﻿using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Math;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -308,6 +306,7 @@ namespace Matter.Core.Commissioning
                 //
                 var paseExchange = paseSession.CreateExchange();
 
+                /*
                 // To test the secure session, fetch the Vendor Name using the Interaction Model.
                 // ReadRequest payload.
                 //
@@ -362,16 +361,102 @@ namespace Matter.Core.Commissioning
 
                 var readClusterResponseMessageFrame = await paseExchange.ReceiveAsync();
 
-                // We're going to switch to a new exchange, so acknowledge this message
+                */
+
+                // Arm the failsafe. This feels very James Bond.
                 //
-                await paseExchange.AcknowledgeMessageAsync(readClusterResponseMessageFrame.MessageCounter);
+                //var armFailsafeRequest = new MatterTLV();
+                //armFailsafeRequest.AddStructure();
 
-                var reportData = readClusterResponseMessageFrame.MessagePayload.Payload;
+                //armFailsafeRequest.AddArray(tagNumber: 2);
 
-                // TODO Extract the VendorName value. For now, just log it.
+                //armFailsafeRequest.AddList();
+
+                //armFailsafeRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                //armFailsafeRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Operational Credentials
+                //armFailsafeRequest.AddUInt16(tagNumber: 2, 0x04); // 11.18.6. Commands CSRRequest
+                //armFailsafeRequest.EndContainer(); // Close the list
+
+                //armFailsafeRequest.EndContainer(); // Close the array
+
+                //armFailsafeRequest.EndContainer(); // Close the structure
+
+                //var armFailsafeMessagePayload = new MessagePayload(armFailsafeRequest);
+
+                //armFailsafeMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                //// Table 14. Protocol IDs for the Matter Standard Vendor ID
+                //armFailsafeMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                //armFailsafeMessagePayload.ProtocolOpCode = 0x09; // InvokeCommand
+
+                //var armFailsafeMessageFrame = new MessageFrame(armFailsafeMessagePayload);
+
+                //armFailsafeMessageFrame.MessageFlags |= MessageFlags.S;
+                //armFailsafeMessageFrame.SecurityFlags = 0x00;
+                //armFailsafeMessageFrame.SourceNodeID = 0x00;
+
+                //await paseExchange.SendAsync(armFailsafeMessageFrame);
+
+                //await paseExchange.ReceiveAsync();
+
+
+                // Perform Step 11 of the Commissioning Flow.
                 //
-                Console.WriteLine(reportData.ToString());
+                var csrRequest = new MatterTLV();
+                csrRequest.AddStructure();
+                csrRequest.AddBool(0, false);
+                csrRequest.AddBool(1, false);
+                csrRequest.AddArray(tagNumber: 2); // InvokeRequests
 
+                csrRequest.AddStructure();
+
+                csrRequest.AddList(tagNumber: 0); // CommandPath
+
+                csrRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                csrRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Operational Credentials
+                csrRequest.AddUInt16(tagNumber: 2, 0x04); // 11.18.6. Commands CSRRequest
+
+                csrRequest.EndContainer();
+
+                csrRequest.AddStructure(1); // CommandFields
+
+                var csrNonceBytes = RandomNumberGenerator.GetBytes(32);
+
+                csrRequest.Add4OctetString(0, csrNonceBytes); // CSRNonce
+
+                csrRequest.EndContainer(); // Close the CommandFields
+
+                csrRequest.EndContainer(); // Close the structure
+
+                csrRequest.EndContainer(); // Close the array
+
+                csrRequest.AddUInt8(255, 12); // interactionModelRevision
+
+                csrRequest.EndContainer(); // Close the structure
+
+                var csrRequestMessagePayload = new MessagePayload(csrRequest);
+
+                csrRequestMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                csrRequestMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                csrRequestMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+
+                var csrRequestMessageFrame = new MessageFrame(csrRequestMessagePayload);
+
+                csrRequestMessageFrame.MessageFlags |= MessageFlags.S;
+                csrRequestMessageFrame.SecurityFlags = 0x00;
+                csrRequestMessageFrame.SourceNodeID = 0x00;
+
+                await paseExchange.SendAsync(csrRequestMessageFrame);
+
+                await paseExchange.ReceiveAsync();
+
+
+
+
+                /*
+                 
                 // Create a new Exchange as we're now exchanging SecureChannel protocol messages
                 //
                 paseExchange = paseSession.CreateExchange();
@@ -429,6 +514,7 @@ namespace Matter.Core.Commissioning
                 await paseExchange.SendAsync(sigma1MessageFrame);
 
                 var sigma2MessageFrame = await paseExchange.ReceiveAsync();
+                */
 
                 await Task.Delay(5000);
             }

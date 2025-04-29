@@ -26,7 +26,15 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddArray(long tagNumber)
+        public MatterTLV AddStructure(byte tagNumber)
+        {
+            // Anonymous i.e. has no tag number.
+            _values.Add(0x01 << 5 | 0x15);
+            _values.Add((byte)tagNumber);
+            return this;
+        }
+
+        public MatterTLV AddArray(byte tagNumber)
         {
             // This is a Context-Specific Tag (0x01), shifted 5 bits and then OR'd with 0x16
             // to produce a context tag for Array, 1 byte long
