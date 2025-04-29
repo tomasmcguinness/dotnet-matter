@@ -69,15 +69,30 @@ namespace Matter.Core
             return this;
         }
 
+        // TODO Merge all these into one method, using the length of the value to determine
+        // the size of the length field.
         public MatterTLV Add1OctetString(long tagNumber, byte[] value)
         {
             // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
             // to produce a context tag for Octet String, 1 bytes length
-            // 00110010
+            // 00110000
             //
             _values.Add((0x01 << 5) | 0x10); // Octet String, 1-octet length
             _values.Add((byte)tagNumber);
             _values.Add((byte)(uint)value.Length);
+            _values.AddRange(value);
+            return this;
+        }
+
+        public MatterTLV Add2OctetString(long tagNumber, byte[] value)
+        {
+            // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 11
+            // to produce a context tag for Octet String, 2 bytes length
+            // 00110001
+            //
+            _values.Add((0x01 << 5) | 0x11); // Octet String, 2-octet length
+            _values.Add((byte)tagNumber);
+            _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
             _values.AddRange(value);
             return this;
         }

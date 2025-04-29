@@ -1,9 +1,11 @@
-﻿using Matter.Core.Cryptography;
+﻿using Matter.Core.Certificates;
+using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Math;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -22,12 +24,13 @@ namespace Matter.Core.Commissioning
             _resetEvent = resetEvent;
         }
 
-        public void PerformDiscovery()
+        public void PerformDiscovery(object? state)
         {
-            CommissionOnNetworkDevice().Wait();
+            Fabric f = state as Fabric;
+            CommissionOnNetworkDevice(f).Wait();
         }
 
-        private async Task CommissionOnNetworkDevice()
+        private async Task CommissionOnNetworkDevice(Fabric fabric)
         {
             //var discoverer = new DnsDiscoverer();
             //await discoverer.DiscoverCommissionableNodes();
@@ -369,12 +372,35 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(reportData.ToString());
 
-                // Exchange CASE Messages
+                // Exchange CASE Messages, starting with Sigma1
                 //
                 var sigma1Payload = new MatterTLV();
                 sigma1Payload.AddStructure();
 
+                var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
+                var spake1SessionId = RandomNumberGenerator.GetBytes(16);
+                var keyPair = CertificateAuthority.GenerateKeyPair();
+                var fabricId = new BigInteger("123");
+                var nodeId = (long)66;
 
+                var publicKey = keyPair.Public as ECPublicKeyParameters;
+                var publicKeyBytes = publicKey.Q.GetEncoded(false).ToArray();
+
+                sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
+                sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
+
+                // Destination identifier is a composite
+                //
+                MemoryStream ms = new MemoryStream();
+                BinaryWriter writer = new BinaryWriter(ms);
+                writer.Write(spake1SessionId);
+                writer.Write(fabricId.ToByteArray());
+                writer.Write(nodeId);
+
+                var destinationId = ms.ToArray();
+
+                sigma1Payload.Add2OctetString(3, destinationId); // initiatorEphPubKey
+                sigma1Payload.Add2OctetString(4, publicKeyBytes); // initiatorEphPubKey
 
                 sigma1Payload.EndContainer();
 
@@ -409,9 +435,11 @@ namespace Matter.Core.Commissioning
 
     public class NetworkCommissioner
     {
+        private readonly Fabric _fabric;
+
         public NetworkCommissioner()
         {
-            
+            _fabric = Fabric.CreateNew("Test");
         }
 
         public void CommissionDevice(int discriminator)
@@ -422,7 +450,9 @@ namespace Matter.Core.Commissioning
             //
             var commissioningThread = new NetworkCommissioningThread(discriminator, resetEvent);
 
-            new Thread(new ThreadStart(commissioningThread.PerformDiscovery)).Start();
+            // Start the thread, passing the fabric as a parameter.
+            //
+            new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery)).Start(_fabric);
 
             // Give the thread some time to complete commissioning.
             //

@@ -43,7 +43,7 @@ namespace Matter.Core.Certificates
             return rootCertificate;
         }
 
-        private static AsymmetricCipherKeyPair GenerateKeyPair()
+        public static AsymmetricCipherKeyPair GenerateKeyPair()
         {
             var curve = ECNamedCurveTable.GetByName("secp256k1");
             var domainParams = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
@@ -54,9 +54,6 @@ namespace Matter.Core.Certificates
             var generator = new ECKeyPairGenerator("ECDSA");
             generator.Init(keyParams);
             var keyPair = generator.GenerateKeyPair();
-
-            //var privateKey = keyPair.Private as ECPrivateKeyParameters;
-            //var publicKey = keyPair.Public as ECPublicKeyParameters;
 
             return keyPair;
         }
