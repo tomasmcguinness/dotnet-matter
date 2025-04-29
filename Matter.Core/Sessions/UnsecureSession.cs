@@ -11,6 +11,8 @@ namespace Matter.Core.Sessions
             _connection = connection;
         }
 
+        public ushort SessionId => 0;
+
         public MessageExchange CreateExchange()
         {
             // We're going to Exchange messages in this session, so we need an MessageExchange 

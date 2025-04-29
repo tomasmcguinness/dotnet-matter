@@ -1,11 +1,11 @@
 ﻿using Matter.Core.Cryptography;
+using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Forms;
 
 namespace Matter.Core.Commissioning
 {
@@ -14,6 +14,7 @@ namespace Matter.Core.Commissioning
         private readonly int _discriminator;
         private readonly ManualResetEvent _resetEvent;
         private readonly List<ulong> _receivedAdvertisments = new();
+        private readonly Fabric _fabric = new();
 
         public NetworkCommissioningThread(int number, ManualResetEvent resetEvent)
         {
@@ -80,18 +81,12 @@ namespace Matter.Core.Commissioning
                 messageFrame.MessageFlags |= MessageFlags.S;
                 messageFrame.SessionID = 0x00;
                 messageFrame.SecurityFlags = 0x00;
-                messageFrame.MessageCounter = GlobalCounter.Counter;
-
-                // Generate a random SourceNodeId
-                //
-                //Random random = new Random();
-                //long sourceNodeId = random.NextInt64(1, long.MaxValue);
-                //messageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(messageFrame);
+
                 var responseMessageFrame = await unsecureExchange.ReceiveAsync();
 
-                Console.WriteLine("Message received");
+                Console.WriteLine("PBKDFParamResponse received");
                 Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
                     (byte)responseMessageFrame.MessageFlags,
                     responseMessageFrame.SessionID,
@@ -120,7 +115,7 @@ namespace Matter.Core.Commissioning
                 var iterations = PBKDFParamResponse.GetUnsignedShort(1);
                 var salt = PBKDFParamResponse.GetOctetString(2);
 
-                Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt));
+                Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
 
                 PBKDFParamResponse.CloseStructure();
 
@@ -193,7 +188,6 @@ namespace Matter.Core.Commissioning
                 pake1MessageFrame.MessageFlags |= MessageFlags.S;
                 pake1MessageFrame.SessionID = 0x00;
                 pake1MessageFrame.SecurityFlags = 0x00;
-                pake1MessageFrame.MessageCounter = GlobalCounter.Counter;
 
                 // Generate a random SourceNodeId
                 //
@@ -266,19 +260,20 @@ namespace Matter.Core.Commissioning
                 pake3MessageFrame.MessageFlags |= MessageFlags.S;
                 pake3MessageFrame.SessionID = 0x00;
                 pake3MessageFrame.SecurityFlags = 0x00;
-                pake3MessageFrame.MessageCounter = GlobalCounter.Counter;
-
-                // Generate a random SourceNodeId
-                //
-                //pake3MessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(pake3MessageFrame);
 
                 var pakeFinishedMessageFrame = await unsecureExchange.ReceiveAsync();
 
+                Console.WriteLine("StatusReport received");
+
+                // This is the status report.
+                //
+                await unsecureExchange.AcknowledgeMessageAsync(pakeFinishedMessageFrame.MessageCounter);
+
                 // We now have enough to establish a secure connection
                 //
-                // We keep the same Bluetooth Connection and continue using the BTP, but this time we will be encrypting the data.
+                // We keep the same UDP Connection but this time we will be encrypting the data.
                 //
                 // Ke is our shared secret.
                 //
@@ -302,16 +297,21 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
                 Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
 
-                Console.WriteLine(format: "PeerSessionId: {0}", pakeFinishedMessageFrame.SessionID);
+                var peerSessionId = pakeFinishedMessageFrame.SessionID;
 
-                // TODO Pass in the keys
+                Console.WriteLine(format: "PeerSessionId: {0}", peerSessionId);
+
+                // Create a PASE session
                 //
-                var secureSession = new PaseSecureSession(udpConnection, encryptKey, decryptKey);
+                var paseSession = new PaseSecureSession(udpConnection, peerSessionId, encryptKey, decryptKey);
 
-                // We need to create a new Exchange, one that's secure.
+                // We then create a new Exchange using the secure session.
                 //
-                var secureExchange = secureSession.CreateExchange();
+                var paseExchange = paseSession.CreateExchange();
 
+                // To test the secure session, fetch the Vendor Name using the Interaction Model.
+                // ReadRequest payload.
+                //
                 var readCluster = new MatterTLV();
                 readCluster.AddStructure();
 
@@ -320,10 +320,10 @@ namespace Matter.Core.Commissioning
                 readCluster.AddList();
 
                 readCluster.AddBool(tagNumber: 0, false);
-                readCluster.AddUInt64(tagNumber: 1, 0x00); // NodeId
+                readCluster.AddUInt64(tagNumber: 1, 0x00); // NodeId 0x00
                 readCluster.AddUInt16(tagNumber: 2, 0x00); // Endpoint 0x00
-                readCluster.AddUInt32(tagNumber: 3, 0x28); // ClusterId 0x28 - basic information
-                readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - vendor name
+                readCluster.AddUInt32(tagNumber: 3, 0x28); // ClusterId 0x28 - Basic Information
+                readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - Vendor Name
                 readCluster.AddUInt16(tagNumber: 5, 0x00); // List Index 0x00
                 readCluster.AddUInt32(tagNumber: 6, 0x00); // Wildcard flags
                 readCluster.EndContainer(); // Close the list
@@ -350,33 +350,53 @@ namespace Matter.Core.Commissioning
 
                 // Table 14. Protocol IDs for the Matter Standard Vendor ID
                 readClusterMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
-                                                             // From Table 18. Secure Channel Protocol Opcodes
+                // From Table 18. Secure Channel Protocol Opcodes
                 readClusterMessagePayload.ProtocolOpCode = 0x2; // ReadRequest
 
                 var readClusterMessageFrame = new MessageFrame(readClusterMessagePayload);
 
-                //A Secure Unicast Session SHALL be indicated when Session Type is Unicast Session and Session ID is NOT 0.
-                //
                 readClusterMessageFrame.MessageFlags |= MessageFlags.S;
                 readClusterMessageFrame.SecurityFlags = 0x00;
-                readClusterMessageFrame.SourceNodeID = 0x00; //(ulong)sourceNodeId;
-                readClusterMessageFrame.SessionID = responderSessionId;// pakeFinishedMessageFrame.SessionID;
-                readClusterMessageFrame.MessageCounter = GlobalCounter.Counter;
+                readClusterMessageFrame.SourceNodeID = 0x00;
 
-                await secureExchange.SendAsync(readClusterMessageFrame);
+                await paseExchange.SendAsync(readClusterMessageFrame);
 
-                var readClusterResponseMessageFrame = await secureExchange.ReceiveAsync();
+                var readClusterResponseMessageFrame = await paseExchange.ReceiveAsync();
 
                 // The response we get should be an InteractionMessage OpCode 
                 //
-                if (readClusterResponseMessageFrame.MessagePayload.ProtocolOpCode == 0x5)
-                {
-                    var reportData = readClusterResponseMessageFrame.MessagePayload.Payload;
+                var reportData = readClusterResponseMessageFrame.MessagePayload.Payload;
 
-                    Console.WriteLine("Payload: {0}", BitConverter.ToString(reportData.GetBytes()));
+                Console.WriteLine(reportData.ToString());
 
-                    Console.WriteLine(reportData.ToString());
-                }
+                // Exchange CASE Messages
+                //
+                var sigma1Payload = new MatterTLV();
+                sigma1Payload.AddStructure();
+
+
+
+                sigma1Payload.EndContainer();
+
+                var sigma1MessagePayload = new MessagePayload(sigma1Payload);
+
+                sigma1MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                sigma1MessagePayload.ProtocolId = 0x00;
+                // From Table 18. Secure Channel Protocol Opcodes
+                sigma1MessagePayload.ProtocolOpCode = 0x30; // Sigma1
+
+                var sigma1MessageFrame = new MessageFrame(sigma1MessagePayload);
+
+                sigma1MessageFrame.MessageFlags |= MessageFlags.S;
+                sigma1MessageFrame.SecurityFlags = 0x00;
+                sigma1MessageFrame.SourceNodeID = 0x00;
+                sigma1MessageFrame.MessageCounter = GlobalCounter.Counter;
+
+                await paseExchange.SendAsync(sigma1MessageFrame);
+
+                var sigma2MessageFrame = await paseExchange.ReceiveAsync();
 
                 await Task.Delay(5000);
             }
@@ -389,6 +409,11 @@ namespace Matter.Core.Commissioning
 
     public class NetworkCommissioner
     {
+        public NetworkCommissioner()
+        {
+            
+        }
+
         public void CommissionDevice(int discriminator)
         {
             ManualResetEvent resetEvent = new ManualResetEvent(false);

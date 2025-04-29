@@ -13,7 +13,7 @@ namespace Matter.Tests
         }
 
         [Test]
-        public void Test1()
+        public void TestVectors()
         {
             // This test uses some of the Test Vectors from the Spake2+ RFC (https://datatracker.ietf.org/doc/html/draft-bar-cfrg-spake2plus-02#appendix-B)
             //
@@ -75,15 +75,6 @@ namespace Matter.Tests
                              .Where(x => x % 2 == 0)
                              .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
                              .ToArray();
-        }
-
-        [Test]
-        public void Test2()
-        {
-            var salt = Encoding.ASCII.GetBytes("SPAKE2P Key Salt");
-            var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(20202021, 1000, salt);
-
-
         }
     }
 }

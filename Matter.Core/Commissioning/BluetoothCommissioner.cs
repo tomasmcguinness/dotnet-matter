@@ -13,13 +13,13 @@ using Windows.Storage.Streams;
 
 namespace Matter.Core.Commissioning
 {
-    public class CommissioningThread
+    public class BluetoothCommissioningThread
     {
         private readonly int _discriminator;
         private readonly ManualResetEvent _resetEvent;
         private readonly List<ulong> _receivedAdvertisments = new();
 
-        public CommissioningThread(int number, ManualResetEvent resetEvent)
+        public BluetoothCommissioningThread(int number, ManualResetEvent resetEvent)
         {
             _discriminator = number;
             _resetEvent = resetEvent;
@@ -27,21 +27,14 @@ namespace Matter.Core.Commissioning
 
         public void PerformDiscovery()
         {
-            StartNetworkDiscovery().Wait();
-
-            //StartBluetoothDiscovery();
-        }
-
-        private async Task StartNetworkDiscovery()
-        {
-            var discoverer = new DnsDiscoverer();
-            await discoverer.DiscoverCommissionableNodes();
+            StartBluetoothDiscovery();
         }
 
         private void StartBluetoothDiscovery()
         {
             // TODO Abstract the Bluetooth code behind an interface so we can use different providers
             // e.g. Linux. Using the BluetoothLEAdvertisementWatcher ties us to Windows.
+            // This is fine for now.
             //
             BluetoothLEAdvertisementWatcher bluetoothLEAdvertisementWatcher = new();
             bluetoothLEAdvertisementWatcher.AllowExtendedAdvertisements = true;
@@ -51,7 +44,6 @@ namespace Matter.Core.Commissioning
         }
 
         private BTPConnection _btpSession;
-        private int _matterMessageCounter = 0;
 
         private async void BluetoothLEAdvertisementWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
@@ -370,7 +362,7 @@ namespace Matter.Core.Commissioning
 
                             // TODO Pass in the keys
                             //
-                            var secureSession = new PaseSecureSession(_btpSession, encryptKey, decryptKey);
+                            var secureSession = new PaseSecureSession(_btpSession, responderSessionId, encryptKey, decryptKey);
 
                             // We need to create a new Exchange, one that's secure.
                             //
@@ -419,7 +411,7 @@ namespace Matter.Core.Commissioning
                             //nonceWriter.Write((byte)readClusterMessageFrame.SecurityFlags);
                             //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.MessageCounter));
                             //nonceWriter.Write(BitConverter.GetBytes(readClusterMessageFrame.SourceNodeID));
-                            
+
                             //var nonce = memoryStream.ToArray();
 
                             //memoryStream = new MemoryStream();
@@ -454,7 +446,7 @@ namespace Matter.Core.Commissioning
         }
     }
 
-    public class Commissioner
+    public class BluetoothCommissioner
     {
         public void CommissionDevice(int discriminator)
         {
@@ -462,7 +454,7 @@ namespace Matter.Core.Commissioning
 
             // Run the commissioning in a thread.
             //
-            var commissioningThread = new CommissioningThread(discriminator, resetEvent);
+            var commissioningThread = new BluetoothCommissioningThread(discriminator, resetEvent);
 
             new Thread(new ThreadStart(commissioningThread.PerformDiscovery)).Start();
 

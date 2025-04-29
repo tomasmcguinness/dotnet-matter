@@ -21,7 +21,7 @@ namespace Matter.Core.BTP
 
         private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
-        private Channel<byte[]> ReceivedDataChannel = Channel.CreateBounded<byte[]>(5);
+        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
 
         public BTPConnection(BluetoothLEDevice device)
         {
@@ -54,7 +54,7 @@ namespace Matter.Core.BTP
                     //
                     if (isEnding)
                     {
-                        await ReceivedDataChannel.Writer.WriteAsync(btnFrame.Payload);
+                        await _receivedDataChannel.Writer.WriteAsync(btnFrame.Payload);
                     }
                 }
             }
@@ -250,7 +250,7 @@ namespace Matter.Core.BTP
 
         public async Task<byte[]> ReadAsync()
         {
-            return await ReceivedDataChannel.Reader.ReadAsync();
+            return await _receivedDataChannel.Reader.ReadAsync();
         }
 
         public async Task SendAsync(byte[] bytes)

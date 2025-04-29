@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.Text;
 
 namespace Matter.Core
 {
@@ -322,200 +321,212 @@ namespace Matter.Core
 
                 int length = 1; // We have read the tagControl and elementType byte
 
-                if (elementType == 0x15)
-                {
-                    sb.AppendLine("Structure {");
-                    indentation += 2;
-                }
+                sb.Append("|");
+                indent(sb);
 
-                else if (elementType == 0x16)
+                try
                 {
-                    if (tagControl == 0x01) // Context {
+                    if (elementType == 0x15)
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
+                        sb.AppendLine("Structure {");
+                        indentation += 2;
                     }
 
-                    sb.AppendLine("Array {");
-                    indentation += 2;
-                }
-
-                else if (elementType == 0x17)
-                {
-                    if (tagControl == 0x01) // Context {
+                    else if (elementType == 0x16)
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        sb.AppendLine("Array {");
+                        indentation += 2;
                     }
 
-                    sb.AppendLine("List {");
-                    indentation += 2;
-                }
-
-                else if (elementType == 0x07) // Unsigned Integer 64bit 
-                {
-                    if (tagControl == 0x01) // Context {
+                    else if (elementType == 0x17)
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        sb.AppendLine("List {");
+                        indentation += 2;
                     }
 
-                    var value = BitConverter.ToUInt64(bytes, index + length);
-
-                    sb.AppendLine($"Unsigned Int (64bit) ({value})");
-
-                    length += 8;
-                }
-
-                else if (elementType == 0x06) // Unsigned Integer 32bit 
-                {
-                    if (tagControl == 0x01) // Context {
+                    else if (elementType == 0x07) // Unsigned Integer 64bit 
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        var value = BitConverter.ToUInt64(bytes, index + length);
+
+                        sb.AppendLine($"Unsigned Int (64bit) ({value})");
+
+                        length += 8;
                     }
 
-                    var value = BitConverter.ToUInt32(bytes, index + length);
-
-                    sb.AppendLine($"Unsigned Int (32bit) ({value})");
-
-                    length += 4;
-                }
-
-                else if (elementType == 0x05) // Unsigned Integer 16bit 
-                {
-                    if (tagControl == 0x01) // Context {
+                    else if (elementType == 0x06) // Unsigned Integer 32bit 
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
 
-                    var value = BitConverter.ToUInt16(bytes, index + length);
+                        var value = BitConverter.ToUInt32(bytes, index + length);
 
-                    sb.AppendLine($"Unsigned Int (16bit) ({value})");
-
-                    length += 2;
-                }
-
-                else if (elementType == 0x04) // Unsigned Integer 8bit 
-                {
-                    if (tagControl == 0x01) // Context {
-                    {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
-
-                    var value = bytes[index + length];
-
-                    sb.AppendLine($"Unsigned Int (16bit) ({value})");
-
-                    length += 1;
-                }
-
-                else if (elementType == 0x01) // Signed Integer 16bit 
-                {
-                    if (tagControl == 0x01) // Context {
-                    {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
-
-                    var value = BitConverter.ToInt16(bytes, index + length);
-
-                    sb.AppendLine($"Signed Int (16bit) ({value})");
-
-                    length += 1;
-                }
-
-                else if (elementType == 0x00) // Signed Integer 8bit 
-                {
-                    if (tagControl == 0x01) // Context {
-                    {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
-
-                    var value = bytes[index + length];
-
-                    sb.AppendLine($"Signed Int (8bit) ({value} | {value:X})");
-
-                    length += 1;
-                }
-
-                else if (elementType == 0x0C) // UTF-8 String, 1-octet length
-                {
-                    if (tagControl == 0x01) // Context {
-                    {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
-
-                    // One octet length
-                    var stringLength = bytes[index + length];
-
-                    length++;
-
-                    var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
-
-                    sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
-
-                    length += 1;
-                }
-
-                else if (elementType == 0x0E) // UTF-8 String, 4-octet length
-                {
-                    if (tagControl == 0x01) // Context {
-                    {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
-                    }
-                    else if (tagControl == 0x02) // Common Profile Tag Form, 2 octets
-                    {
-                        var tag = BitConverter.ToInt16(bytes, index + length);
-                        sb.Append($"{tag} => ");
-
-                        length += 2;
-                    }
-                    else if (tagControl == 0x03) // Common Profile Tag Form, 4 octets
-                    {
-                        var tag = BitConverter.ToInt32(bytes, index + length);
-                        sb.Append($"{tag} => ");
+                        sb.AppendLine($"Unsigned Int (32bit) ({value})");
 
                         length += 4;
                     }
 
-                    // One octet length
-                    var stringLength = BitConverter.ToInt32(bytes, index + length);
-
-                    length += 4;
-
-                    var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, (int)stringLength));
-
-                    sb.AppendLine($"UTF-8 String, 4-octet length ({value})");
-
-                    length += 1;
-                }
-
-                else if (elementType == 0x08 || elementType == 0x09) // Boolean
-                {
-                    if (tagControl == 0x01) // Context {
+                    else if (elementType == 0x05) // Unsigned Integer 16bit 
                     {
-                        sb.Append($"{bytes[index + 1].ToString()} => ");
-                        length++;
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        var value = BitConverter.ToUInt16(bytes, index + length);
+
+                        sb.AppendLine($"Unsigned Int (16bit) ({value}|0x{value:X})");
+
+                        length += 2;
                     }
 
-                    sb.AppendLine($"Boolean ({elementType == 0x09})");
-                }
+                    else if (elementType == 0x04) // Unsigned Integer 8bit 
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
 
-                else if (elementType == 0x18)
-                {
-                    indentation -= 2;
-                    sb.AppendLine("}");
-                }
+                        var value = bytes[index + length];
 
-                else
+                        sb.AppendLine($"Unsigned Int (16bit) ({value}|0x{value:X})");
+
+                        length += 1;
+                    }
+
+                    else if (elementType == 0x01) // Signed Integer 16bit 
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        var value = BitConverter.ToInt16(bytes, index + length);
+
+                        sb.AppendLine($"Signed Int (16bit) ({value}|0x{value:X})");
+
+                        length += 1;
+                    }
+
+                    else if (elementType == 0x00) // Signed Integer 8bit 
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        var value = bytes[index + length];
+
+                        sb.AppendLine($"Signed Int (8bit) ({value}|0x{value:X})");
+
+                        length += 1;
+                    }
+
+                    else if (elementType == 0x0C) // UTF-8 String, 1-octet length
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        // One octet length
+                        var stringLength = bytes[index + length];
+
+                        length++;
+
+                        var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
+
+                        sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
+
+                        length += 1;
+                    }
+
+                    else if (elementType == 0x0E) // UTF-8 String, 4-octet length
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+
+                            length++;
+                        }
+                        else if (tagControl == 0x02) // Common Profile Tag Form, 2 octets
+                        {
+                            var tag = BitConverter.ToInt16(bytes, index + length);
+                            sb.Append($"{tag} => ");
+
+                            length += 2;
+                        }
+                        else if (tagControl == 0x03) // Common Profile Tag Form, 4 octets
+                        {
+                            var tag = BitConverter.ToInt32(bytes, index + length);
+                            sb.Append($"{tag} => ");
+
+                            length += 4;
+                        }
+
+                        // One octet length
+                        var stringLength = BitConverter.ToUInt32(bytes, index + length);
+
+                        length += 4;
+
+                        var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, (int)stringLength));
+
+                        sb.AppendLine($"UTF-8 String, 4-octet length ({value})");
+
+                        length += 1;
+                    }
+
+                    else if (elementType == 0x08 || elementType == 0x09) // Boolean
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        sb.AppendLine($"Boolean ({elementType == 0x09})");
+                    }
+
+                    else if (elementType == 0x18)
+                    {
+                        indentation -= 2;
+                        sb.AppendLine("}");
+                    }
+
+                    else
+                    {
+                        sb.AppendLine($"Unhandled Tag ({tagControl:X}|{elementType:X})");
+                    }
+
+                }
+                catch
                 {
-                    sb.AppendLine($"Unhandled Tag ({tagControl:X}|{elementType:X})");
+
                 }
 
                 return length;
@@ -529,7 +540,6 @@ namespace Matter.Core
 
             while (i < bytes.Length)
             {
-                indent(sb);
                 i += renderTag(bytes, i);
             }
 

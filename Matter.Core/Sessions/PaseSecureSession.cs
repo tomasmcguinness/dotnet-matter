@@ -5,11 +5,10 @@ namespace Matter.Core.Sessions
     internal class PaseSecureSession : ISession
     {
         private readonly IConnection _connection;
-        private readonly ushort _sessionId;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
 
-        public PaseSecureSession(IConnection connection, byte[] encryptionKey, byte[] decryptionKey)
+        public PaseSecureSession(IConnection connection, ushort sessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
             _encryptionKey = encryptionKey;
@@ -17,18 +16,20 @@ namespace Matter.Core.Sessions
 
             using (var rng = RandomNumberGenerator.Create())
             {
-                var randomBytes = new byte[2];
+                //var randomBytes = new byte[2];
 
-                rng.GetBytes(randomBytes);
-                ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
+                //rng.GetBytes(randomBytes);
+                //ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
 
-                _sessionId = trueRandom;
+                SessionId = sessionId;
 
-                Console.WriteLine($"Created PASE Secure Session: {_sessionId}");
+                Console.WriteLine($"Created PASE Secure Session: {SessionId}");
             }
 
             _decryptionKey = decryptionKey;
         }
+
+        public ushort SessionId { get; }
 
         public MessageExchange CreateExchange()
         {

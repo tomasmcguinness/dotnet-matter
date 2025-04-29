@@ -2,6 +2,8 @@
 {
     internal interface ISession
     {
+        ushort SessionId { get; }
+
         MessageExchange CreateExchange();
 
         byte[] Encode(MessageFrame message);
