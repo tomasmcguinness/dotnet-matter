@@ -16,7 +16,7 @@ namespace Matter.Core.Commissioning
         private readonly int _discriminator;
         private readonly ManualResetEvent _resetEvent;
         private readonly List<ulong> _receivedAdvertisments = new();
-        private readonly Fabric _fabric = new();
+        private readonly Fabric _fabric = Fabric.CreateNew("NetworkFabric");
 
         public NetworkCommissioningThread(int number, ManualResetEvent resetEvent)
         {
@@ -111,6 +111,8 @@ namespace Matter.Core.Commissioning
                 var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
                 var responderSessionId = PBKDFParamResponse.GetUnsignedShort(3);
 
+                var peerSessionId = responderSessionId;
+
                 Console.WriteLine("Responder Session Id: {0}", responderSessionId);
 
                 PBKDFParamResponse.OpenStructure(4);
@@ -191,10 +193,6 @@ namespace Matter.Core.Commissioning
                 pake1MessageFrame.MessageFlags |= MessageFlags.S;
                 pake1MessageFrame.SessionID = 0x00;
                 pake1MessageFrame.SecurityFlags = 0x00;
-
-                // Generate a random SourceNodeId
-                //
-                //pake1MessageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                 await unsecureExchange.SendAsync(pake1MessageFrame);
 
@@ -300,8 +298,6 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
                 Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
 
-                var peerSessionId = pakeFinishedMessageFrame.SessionID;
-
                 Console.WriteLine(format: "PeerSessionId: {0}", peerSessionId);
 
                 // Create a PASE session
@@ -366,17 +362,22 @@ namespace Matter.Core.Commissioning
 
                 var readClusterResponseMessageFrame = await paseExchange.ReceiveAsync();
 
-                // The response we get should be an InteractionMessage OpCode 
+                // We're going to switch to a new exchange, so acknowledge this message
                 //
+                await paseExchange.AcknowledgeMessageAsync(readClusterResponseMessageFrame.MessageCounter);
+
                 var reportData = readClusterResponseMessageFrame.MessagePayload.Payload;
 
+                // TODO Extract the VendorName value. For now, just log it.
+                //
                 Console.WriteLine(reportData.ToString());
+
+                // Create a new Exchange as we're now exchanging SecureChannel protocol messages
+                //
+                paseExchange = paseSession.CreateExchange();
 
                 // Exchange CASE Messages, starting with Sigma1
                 //
-                var sigma1Payload = new MatterTLV();
-                sigma1Payload.AddStructure();
-
                 var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                 var spake1SessionId = RandomNumberGenerator.GetBytes(16);
                 var keyPair = CertificateAuthority.GenerateKeyPair();
@@ -386,20 +387,26 @@ namespace Matter.Core.Commissioning
                 var publicKey = keyPair.Public as ECPublicKeyParameters;
                 var publicKeyBytes = publicKey.Q.GetEncoded(false).ToArray();
 
-                sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
-                sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
-
                 // Destination identifier is a composite
                 //
                 MemoryStream ms = new MemoryStream();
                 BinaryWriter writer = new BinaryWriter(ms);
+                writer.Write(spake1InitiatorRandomBytes);
                 writer.Write(spake1SessionId);
                 writer.Write(fabricId.ToByteArray());
                 writer.Write(nodeId);
 
                 var destinationId = ms.ToArray();
 
-                sigma1Payload.Add2OctetString(3, destinationId); // initiatorEphPubKey
+                var hmac = new HMACSHA256(_fabric.IPK);
+                byte[] hashedDestinationId = hmac.ComputeHash(destinationId);
+
+                var sigma1Payload = new MatterTLV();
+                sigma1Payload.AddStructure();
+
+                sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
+                sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
+                sigma1Payload.Add2OctetString(3, hashedDestinationId); // destinationId
                 sigma1Payload.Add2OctetString(4, publicKeyBytes); // initiatorEphPubKey
 
                 sigma1Payload.EndContainer();
@@ -418,7 +425,6 @@ namespace Matter.Core.Commissioning
                 sigma1MessageFrame.MessageFlags |= MessageFlags.S;
                 sigma1MessageFrame.SecurityFlags = 0x00;
                 sigma1MessageFrame.SourceNodeID = 0x00;
-                sigma1MessageFrame.MessageCounter = GlobalCounter.Counter;
 
                 await paseExchange.SendAsync(sigma1MessageFrame);
 
@@ -426,9 +432,10 @@ namespace Matter.Core.Commissioning
 
                 await Task.Delay(5000);
             }
-            catch
+            catch (Exception exp)
             {
-
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error: {0}", exp.Message);
             }
         }
     }

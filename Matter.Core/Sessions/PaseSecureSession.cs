@@ -114,44 +114,53 @@ namespace Matter.Core.Sessions
             //
             var parts = new MessageFrameParts(payload);
 
-            Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
-            Console.WriteLine("Incoming Payload: {0}", BitConverter.ToString(parts.Payload));
+            //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
+            //Console.WriteLine("Incoming Payload: {0}", BitConverter.ToString(parts.Payload));
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            var memoryStream = new MemoryStream();
-            var nonceWriter = new BinaryWriter(memoryStream);
+            if ((messageFrame.SecurityFlags & SecurityFlags.Privacy) != 0)
+            {
+                Console.WriteLine("Message flagged Privacy. Decoding...");
 
-            nonceWriter.Write((byte)messageFrame.SecurityFlags);
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                var memoryStream = new MemoryStream();
+                var nonceWriter = new BinaryWriter(memoryStream);
 
-            var nonce = memoryStream.ToArray();
+                nonceWriter.Write((byte)messageFrame.SecurityFlags);
+                nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
-            Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
+                var nonce = memoryStream.ToArray();
 
-            memoryStream = new MemoryStream();
-            var additionalDataWriter = new BinaryWriter(memoryStream);
+                //Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
 
-            additionalDataWriter.Write((byte)messageFrame.MessageFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-            additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                memoryStream = new MemoryStream();
+                var additionalDataWriter = new BinaryWriter(memoryStream);
 
-            var additionalData = memoryStream.ToArray();
+                additionalDataWriter.Write((byte)messageFrame.MessageFlags);
+                additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
+                additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
-            Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
+                var additionalData = memoryStream.ToArray();
 
-            byte[] decryptedPayload = new byte[parts.Payload.Length - 16];
+                Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
-            var tag = parts.Payload.AsSpan().Slice(parts.Payload.Length - 16, 16);
-            var encryptedPayload = parts.Payload.AsSpan().Slice(0, parts.Payload.Length - 16);
+                byte[] decryptedPayload = new byte[parts.Payload.Length - 16];
 
-            var encryptor = new AesCcm(_decryptionKey);
-            encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+                var tag = parts.Payload.AsSpan().Slice(parts.Payload.Length - 16, 16);
+                var encryptedPayload = parts.Payload.AsSpan().Slice(0, parts.Payload.Length - 16);
 
-            messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
+                var encryptor = new AesCcm(_decryptionKey);
+                encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+
+                messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
+            }
+            else
+            {
+                messageFrame.MessagePayload = new MessagePayload(parts.Payload);
+            }
 
             return messageFrame;
         }

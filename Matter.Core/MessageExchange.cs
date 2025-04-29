@@ -19,7 +19,7 @@ namespace Matter.Core
             _exchangeId = exchangeId;
             _session = session;
 
-            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 5000, 5000);
+            //_acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 5000, 5000);
         }
 
         private async void SendStandaloneAcknowledgement(object? state)
@@ -36,6 +36,7 @@ namespace Matter.Core
         {
             // Set the common data on the MessageFrame.
             //
+            message.SessionID = _session.SessionId;
             message.MessagePayload.ExchangeID = _exchangeId;
             message.MessageCounter = GlobalCounter.Counter;
 
@@ -51,6 +52,10 @@ namespace Matter.Core
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
                 message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
             }
+
+            // TODO Turn the ProtocolId and OpCode into nice names.
+            //
+            Console.WriteLine(">>> Sending Message {0} | {1:X2} | {2:X2}", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode);
 
             var bytes = _session.Encode(message);
 
@@ -77,6 +82,7 @@ namespace Matter.Core
         {
             MessagePayload payload = new MessagePayload();
             payload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
+            payload.ExchangeFlags |= ExchangeFlags.Initiator;
             payload.AcknowledgedMessageCounter = messageCounter;
             payload.ProtocolId = 0x00; // Secure Channel
             payload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement

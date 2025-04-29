@@ -537,7 +537,6 @@ namespace Matter.Core
                     {
                         sb.AppendLine($"Unhandled Tag ({tagControl:X}|{elementType:X})");
                     }
-
                 }
                 catch
                 {
