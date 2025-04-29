@@ -450,8 +450,11 @@ namespace Matter.Core.Commissioning
 
                 await paseExchange.SendAsync(csrRequestMessageFrame);
 
-                await paseExchange.ReceiveAsync();
+                var csrResponseMessageFrame = await paseExchange.ReceiveAsync();
 
+                Console.WriteLine(csrResponseMessageFrame.MessagePayload.Payload.ToString());
+
+                await paseExchange.AcknowledgeMessageAsync(csrResponseMessageFrame.MessageCounter);
 
 
 

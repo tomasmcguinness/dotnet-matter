@@ -327,6 +327,7 @@ namespace Matter.Core
         public override string ToString()
         {
             var sb = new StringBuilder();
+
             var indentation = 0;
 
             var indent = (StringBuilder sb) =>
@@ -342,15 +343,21 @@ namespace Matter.Core
                 int tagControl = (bytes[index] >> 5);
                 int elementType = ((bytes[index] >> 0) & 0x1F);
 
-                int length = 1; // We have read the tagControl and elementType byte
+                int length = 1; // We have read the tagControl/elementType byte
 
                 sb.Append("|");
                 indent(sb);
 
                 try
                 {
-                    if (elementType == 0x15)
+                    if (elementType == 0x15) // Structure
                     {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
                         sb.AppendLine("Structure {");
                         indentation += 2;
                     }
@@ -419,7 +426,7 @@ namespace Matter.Core
 
                         var value = BitConverter.ToUInt16(bytes, index + length);
 
-                        sb.AppendLine($"Unsigned Int (16bit) ({value}|0x{value:X})");
+                        sb.AppendLine($"Unsigned Int (16bit) ({value}|0x{value:X2})");
 
                         length += 2;
                     }
@@ -434,7 +441,7 @@ namespace Matter.Core
 
                         var value = bytes[index + length];
 
-                        sb.AppendLine($"Unsigned Int (16bit) ({value}|0x{value:X})");
+                        sb.AppendLine($"Unsigned Int (8bit) ({value}|0x{value:X2})");
 
                         length += 1;
                     }
@@ -449,9 +456,9 @@ namespace Matter.Core
 
                         var value = BitConverter.ToInt16(bytes, index + length);
 
-                        sb.AppendLine($"Signed Int (16bit) ({value}|0x{value:X})");
+                        sb.AppendLine($"Signed Int (16bit) ({value}|0x{value:X2})");
 
-                        length += 1;
+                        length += 2;
                     }
 
                     else if (elementType == 0x00) // Signed Integer 8bit 
@@ -464,7 +471,7 @@ namespace Matter.Core
 
                         var value = bytes[index + length];
 
-                        sb.AppendLine($"Signed Int (8bit) ({value}|0x{value:X})");
+                        sb.AppendLine($"Signed Int (8bit) ({value}|0x{value:X2})");
 
                         length += 1;
                     }
@@ -524,6 +531,26 @@ namespace Matter.Core
                         length += 1;
                     }
 
+                    else if (elementType == 0x10) // Octet String, 1-octet length
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        // One octet length
+                        var stringLength = bytes[index + length];
+
+                        length++;
+
+                        var value = bytes.AsSpan().Slice(index + length, stringLength).ToArray();
+
+                        sb.AppendLine($"Octet String, 1-octet length ({BitConverter.ToString(value)})");
+
+                        length += stringLength;
+                    }
+
                     else if (elementType == 0x08 || elementType == 0x09) // Boolean
                     {
                         if (tagControl == 0x01) // Context {
@@ -543,7 +570,7 @@ namespace Matter.Core
 
                     else
                     {
-                        sb.AppendLine($"Unhandled Tag ({tagControl:X}|{elementType:X})");
+                        sb.AppendLine($"Unhandled Tag ({tagControl:X2}|{elementType:X2})");
                     }
                 }
                 catch
@@ -557,6 +584,11 @@ namespace Matter.Core
             // Move through each
             //
             var bytes = GetBytes();
+
+            sb.AppendLine("TLV Payload");
+            sb.AppendLine();
+            sb.AppendLine(BitConverter.ToString(bytes).Replace("-", ""));
+            sb.AppendLine();
 
             var i = 0;
 
