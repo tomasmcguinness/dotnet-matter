@@ -87,7 +87,7 @@ namespace Matter.Core
             //
             _values.Add((0x01 << 5) | 0x10); // Octet String, 1-octet length
             _values.Add((byte)tagNumber);
-            _values.Add((byte)(uint)value.Length);
+            _values.Add((byte)value.Length);
             _values.AddRange(value);
             return this;
         }

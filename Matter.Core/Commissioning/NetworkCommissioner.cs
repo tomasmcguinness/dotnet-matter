@@ -454,8 +454,63 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(csrResponseMessageFrame.MessagePayload.Payload.ToString());
 
-                await paseExchange.AcknowledgeMessageAsync(csrResponseMessageFrame.MessageCounter);
+                // Perform Step 12 of the Commissioning Flow.
+                //
+                var addTrustedRootCertificateRequest = new MatterTLV();
+                addTrustedRootCertificateRequest.AddStructure();
+                addTrustedRootCertificateRequest.AddBool(0, false);
+                addTrustedRootCertificateRequest.AddBool(1, false);
+                addTrustedRootCertificateRequest.AddArray(tagNumber: 2); // InvokeRequests
 
+                addTrustedRootCertificateRequest.AddStructure();
+
+                addTrustedRootCertificateRequest.AddList(tagNumber: 0); // CommandPath
+
+                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                addTrustedRootCertificateRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Operational Credentials
+                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 2, 0x0B); // 11.18.6. Command AddTrustedRootCertificate
+
+                addTrustedRootCertificateRequest.EndContainer();
+
+                addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
+
+                addTrustedRootCertificateRequest.Add1OctetString(0, _fabric.RootCertificate.GetEncoded().ToArray()); // RootCertificate
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the array
+
+                addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+
+                var addTrustedRootCertificateRequestMessagePayload = new MessagePayload(addTrustedRootCertificateRequest);
+
+                addTrustedRootCertificateRequestMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                addTrustedRootCertificateRequestMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                addTrustedRootCertificateRequestMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+
+                var addTrustedRootCerticateRequestMessageFrame = new MessageFrame(addTrustedRootCertificateRequestMessagePayload);
+
+                addTrustedRootCerticateRequestMessageFrame.MessageFlags |= MessageFlags.S;
+                addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
+                addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
+
+                await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
+
+                var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
+
+                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+
+
+
+                // Acknowledge the message for now as this is the end of the line.
+                //
+                await paseExchange.AcknowledgeMessageAsync(addTrustedRootCertificateResponseMessageFrame.MessageCounter);
 
 
                 /*
