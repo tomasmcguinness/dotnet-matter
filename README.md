@@ -48,5 +48,8 @@ I am now trying to get the Pake1 message working. As this involved crytography, 
 First milestone reached! I have successfully exchanged the PASE messages. I ended up running the matter.js project and adding lots of logging to help me troubleshoot my code. In the end, I was 99% the way there, but my Transcript Hash was wrong, because of two mistakes in my code. You can read all about it here: https://tomasmcguinness.com/2025/04/15/building-a-net-matter-controller-commissioning-flow-pase-pt4/.
 I'm now starting to look at how to use these PASE keys to speak in a secured way to the device. 
 
+### 27/04/2025
+
+Another milestone reached. My .Net Controller has exchanged a PASE encrypted message with a matter.js example device, successfully retrieving the vendor name attribute! I also started on a UDP controller, with some mDNS support. https://tomasmcguinness.com/2025/04/27/building-a-net-matter-controller-commissioning-flow-get-basic-information/
 
 
