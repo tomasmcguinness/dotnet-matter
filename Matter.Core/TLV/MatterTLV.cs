@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Matter.Core
+namespace Matter.Core.TLV
 {
     /// <summary>
     /// See Appendix A of the Matter Specification for the TLV encoding. 
@@ -30,7 +30,7 @@ namespace Matter.Core
         {
             // Anonymous i.e. has no tag number.
             _values.Add(0x01 << 5 | 0x15);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             return this;
         }
 
@@ -41,7 +41,7 @@ namespace Matter.Core
             // 00110110
             //
             _values.Add(0x01 << 5 | 0x16);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             return this;
         }
 
@@ -85,7 +85,7 @@ namespace Matter.Core
             // to produce a context tag for Octet String, 1 bytes length
             // 00110000
             //
-            _values.Add((0x01 << 5) | 0x10); // Octet String, 1-octet length
+            _values.Add(0x01 << 5 | 0x10); // Octet String, 1-octet length
             _values.Add((byte)tagNumber);
             _values.Add((byte)value.Length);
             _values.AddRange(value);
@@ -98,7 +98,7 @@ namespace Matter.Core
             // to produce a context tag for Octet String, 2 bytes length
             // 00110001
             //
-            _values.Add((0x01 << 5) | 0x11); // Octet String, 2-octet length
+            _values.Add(0x01 << 5 | 0x11); // Octet String, 2-octet length
             _values.Add((byte)tagNumber);
             _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
             _values.AddRange(value);
@@ -111,7 +111,7 @@ namespace Matter.Core
             // to produce a context tag for Octet String, 4 bytes
             // 00110010
             //
-            _values.Add((0x01 << 5) | 0x12); // Octet String, 4-octet length
+            _values.Add(0x01 << 5 | 0x12); // Octet String, 4-octet length
             _values.Add((byte)tagNumber);
             _values.AddRange(BitConverter.GetBytes((uint)value.Length));
             _values.AddRange(value);
@@ -120,7 +120,7 @@ namespace Matter.Core
 
         public MatterTLV AddUInt8(long tagNumber, byte value)
         {
-            _values.Add((0x01 << 5) | 0x4);
+            _values.Add(0x01 << 5 | 0x4);
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -132,7 +132,7 @@ namespace Matter.Core
 
         public MatterTLV AddUInt16(long tagNumber, ushort value)
         {
-            _values.Add((0x01 << 5) | 0x5);
+            _values.Add(0x01 << 5 | 0x5);
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -144,7 +144,7 @@ namespace Matter.Core
 
         public MatterTLV AddUInt32(long tagNumber, uint value)
         {
-            _values.Add((0x01 << 5) | 0x6);
+            _values.Add(0x01 << 5 | 0x6);
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -156,7 +156,7 @@ namespace Matter.Core
 
         public MatterTLV AddUInt64(long tagNumber, ulong value)
         {
-            _values.Add((0x01 << 5) | 0x7);
+            _values.Add(0x01 << 5 | 0x7);
             _values.Add((byte)tagNumber);
 
             // No length required.
@@ -170,11 +170,11 @@ namespace Matter.Core
         {
             if (v2)
             {
-                _values.Add((0x01 << 5) | 0x09); // Boolean TRUE
+                _values.Add(0x01 << 5 | 0x09); // Boolean TRUE
             }
             else
             {
-                _values.Add((0x01 << 5) | 0x08); // Boolean FALSE
+                _values.Add(0x01 << 5 | 0x08); // Boolean FALSE
             }
 
             _values.Add((byte)tagNumber);
@@ -188,19 +188,19 @@ namespace Matter.Core
 
         private int _pointer = 0;
 
-        internal void OpenStructure()
+        public void OpenStructure()
         {
             if (_values[_pointer++] != 0x15) // Anonymous Structure
             {
-                throw new Exception("Expected Open Structure isn't there");
+                throw new Exception("Expected Structure not found");
             }
         }
 
-        internal void OpenStructure(int tag)
+        public void OpenStructure(int tag)
         {
-            if (_values[_pointer++] != 0x35) // Tag Context Structure
+            if ((0x1F & _values[_pointer++]) != 0x15) // Tag Context Structure
             {
-                throw new Exception("Expected Open Structure isn't there");
+                throw new Exception("Expected Structure not found");
             }
 
             if (_values[_pointer++] != (byte)tag)
@@ -209,7 +209,52 @@ namespace Matter.Core
             }
         }
 
-        internal byte[] GetOctetString(int tag)
+        public void OpenArray(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x16) // Context Array
+            {
+                throw new Exception("Expected Array not found");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+        }
+
+        public void OpenList(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x17) // Context List
+            {
+                throw new Exception("Expected List not found");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+        }
+
+        public bool GetBoolean(int tag)
+        {
+            var selectedByte = _values[_pointer++];
+
+            if (selectedByte != 0x28 && selectedByte != 0x29) // Context Boolean (false)
+            {
+                throw new Exception("Expected Boolean not found");
+            }
+
+            bool value = selectedByte == 0x29; // True
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            return value;
+        }
+
+        public byte[] GetOctetString(int tag)
         {
             // Check the Control Octet.
             //
@@ -273,7 +318,24 @@ namespace Matter.Core
             return bytes;
         }
 
-        internal ushort GetUnsignedShort(int tag)
+        public byte GetUnsignedInt8(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x04)
+            {
+                throw new Exception("Expected Unsigned Integer, 1-octet value not found");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            byte value = _values[_pointer++];
+
+            return value;
+        }
+
+        public ushort GetUnsignedInt16(int tag)
         {
             if ((0x1F & _values[_pointer++]) != 0x05)
             {
@@ -292,7 +354,7 @@ namespace Matter.Core
             return value;
         }
 
-        internal uint GetUnsignedInteger(int tag)
+        internal uint GetUnsignedInt32(int tag)
         {
             if ((0x1F & _values[_pointer++]) != 0x06)
             {
@@ -311,11 +373,11 @@ namespace Matter.Core
             return value;
         }
 
-        internal void CloseStructure()
+        public void CloseContainer()
         {
             if (_values[_pointer++] != 0x18) // End Container
             {
-                throw new Exception("Expected EndContainer isn't there");
+                throw new Exception("Expected EndContainer not found");
             }
         }
 
@@ -340,8 +402,8 @@ namespace Matter.Core
 
             var renderTag = (byte[] bytes, int index) =>
             {
-                int tagControl = (bytes[index] >> 5);
-                int elementType = ((bytes[index] >> 0) & 0x1F);
+                int tagControl = bytes[index] >> 5;
+                int elementType = bytes[index] >> 0 & 0x1F;
 
                 int length = 1; // We have read the tagControl/elementType byte
 

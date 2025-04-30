@@ -13,10 +13,8 @@ namespace Matter.Core.Certificates
 {
     public class CertificateAuthority
     {
-        public static X509Certificate GenerateRootCertificate()
+        public static X509Certificate GenerateRootCertificate(AsymmetricCipherKeyPair keyPair)
         {
-            var keyPair = GenerateKeyPair();
-
             var privateKey = keyPair.Private as ECPrivateKeyParameters;
             var publicKey = keyPair.Public as ECPublicKeyParameters;
 

@@ -1,11 +1,25 @@
 ﻿using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
+using Matter.Core.TLV;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Prng;
+using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Utilities;
+using Org.BouncyCastle.Utilities.IO.Pem;
+using Org.BouncyCastle.X509.Extension;
+using Org.BouncyCastle.X509;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Text;
+using Org.BouncyCastle.Math;
 
 namespace Matter.Core.Commissioning
 {
@@ -30,6 +44,8 @@ namespace Matter.Core.Commissioning
 
         private async Task CommissionOnNetworkDevice(Fabric fabric)
         {
+            Console.ForegroundColor = ConsoleColor.White;
+
             //var discoverer = new DnsDiscoverer();
             //await discoverer.DiscoverCommissionableNodes();
 
@@ -107,7 +123,7 @@ namespace Matter.Core.Commissioning
 
                 var initiatorRandomBytes2 = PBKDFParamResponse.GetOctetString(1);
                 var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
-                var responderSessionId = PBKDFParamResponse.GetUnsignedShort(3);
+                var responderSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
 
                 var peerSessionId = responderSessionId;
 
@@ -115,12 +131,12 @@ namespace Matter.Core.Commissioning
 
                 PBKDFParamResponse.OpenStructure(4);
 
-                var iterations = PBKDFParamResponse.GetUnsignedShort(1);
+                var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
                 var salt = PBKDFParamResponse.GetOctetString(2);
 
                 Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
 
-                PBKDFParamResponse.CloseStructure();
+                PBKDFParamResponse.CloseContainer();
 
                 // TODO Read tag 5
 
@@ -218,7 +234,7 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("Y: {0}", BitConverter.ToString(Y).Replace("-", ""));
                 Console.WriteLine("Verifier: {0}", BitConverter.ToString(Verifier).Replace("-", ""));
 
-                pake2.CloseStructure();
+                pake2.CloseContainer();
 
                 // Compute Pake3
                 //
@@ -454,7 +470,66 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(csrResponseMessageFrame.MessagePayload.Payload.ToString());
 
-                // Perform Step 12 of the Commissioning Flow.
+                // Perform Step 12 of the commissioning flow.
+
+                //Pkcs10CertificationRequest decodedCsr = (Pkcs10CertificationRequest)new PemReader(new StringReader(csr)).ReadObject();
+
+                var csrPayload = csrResponseMessageFrame.MessagePayload.Payload;
+
+                csrPayload.OpenStructure();
+                csrPayload.GetBoolean(0);
+                csrPayload.OpenArray(1);
+
+                csrPayload.OpenStructure();
+                csrPayload.OpenStructure(0);
+
+                csrPayload.OpenList(0);
+                csrPayload.GetUnsignedInt8(0);
+                csrPayload.GetUnsignedInt8(1);
+                csrPayload.GetUnsignedInt8(2);
+                csrPayload.CloseContainer(); // Close list.
+
+                csrPayload.OpenStructure(1);
+                var nocsrBytes = csrPayload.GetOctetString(0);
+
+                var nocsrString = Encoding.ASCII.GetString(nocsrBytes.ToArray());
+
+                var test = new MatterTLV(nocsrBytes);
+                Console.WriteLine(test);
+
+                test.OpenStructure();
+                var derBytes = test.GetOctetString(1);
+
+                var certificateRequest = new Pkcs10CertificationRequest(derBytes);
+
+                // Create a self signed certificate!
+                //
+                var csrInfo = certificateRequest.GetCertificationRequestInfo();
+                var certGenerator = new X509V3CertificateGenerator();
+                var randomGenerator = new CryptoApiRandomGenerator();
+                var random = new SecureRandom(randomGenerator);
+                var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
+
+                certGenerator.SetSerialNumber(serialNumber);
+                certGenerator.SetIssuerDN(csrInfo.Subject);
+                certGenerator.SetNotBefore(DateTime.UtcNow);
+                certGenerator.SetNotAfter(DateTime.UtcNow.AddYears(10));
+                certGenerator.SetSubjectDN(csrInfo.Subject);
+                certGenerator.SetPublicKey(certificateRequest.GetPublicKey());
+
+                // Add the BasicConstraints and SubjectKeyIdentifier extensions
+                certGenerator.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
+                certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifierStructure(certificateRequest.GetPublicKey()));
+
+                // Create a signature factory for the specified algorithm and private key
+                ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", _fabric.KeyPair.Private as ECPrivateKeyParameters);
+
+                // Sign the certificate with the specified signature algorithm
+                var noc = certGenerator.Generate(signatureFactory);
+
+                noc.CheckValidity();
+
+                // Perform Step 13 of the Commissioning Flow.
                 //
                 var addTrustedRootCertificateRequest = new MatterTLV();
                 addTrustedRootCertificateRequest.AddStructure();
@@ -496,15 +571,87 @@ namespace Matter.Core.Commissioning
 
                 var addTrustedRootCerticateRequestMessageFrame = new MessageFrame(addTrustedRootCertificateRequestMessagePayload);
 
+                // TODO Send this using MRP.
                 addTrustedRootCerticateRequestMessageFrame.MessageFlags |= MessageFlags.S;
                 addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
                 addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
+
+                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.Payload.ToString());
 
                 await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
 
                 var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
 
                 Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+
+
+
+
+
+
+                // Perform Step 13 of the Commissioning Flow.
+                //
+                var addNocRequest = new MatterTLV();
+                addTrustedRootCertificateRequest.AddStructure();
+                addTrustedRootCertificateRequest.AddBool(0, false);
+                addTrustedRootCertificateRequest.AddBool(1, false);
+                addTrustedRootCertificateRequest.AddArray(tagNumber: 2); // InvokeRequests
+
+                addTrustedRootCertificateRequest.AddStructure();
+
+                addTrustedRootCertificateRequest.AddList(tagNumber: 0); // CommandPath
+
+                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                addTrustedRootCertificateRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Node Operational Credentials
+                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 2, 0x06); // 11.18.6. Command AddNoc
+
+                addTrustedRootCertificateRequest.EndContainer();
+
+                addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
+
+                addTrustedRootCertificateRequest.Add2OctetString(0, noc.GetEncoded()); // NOC
+                addTrustedRootCertificateRequest.Add2OctetString(2, _fabric.IPK); // IPK
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the array
+
+                addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
+
+                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+
+                var addTrustedRootCertificateRequestMessagePayload = new MessagePayload(addTrustedRootCertificateRequest);
+
+                addTrustedRootCertificateRequestMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                addTrustedRootCertificateRequestMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                addTrustedRootCertificateRequestMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+
+                var addTrustedRootCerticateRequestMessageFrame = new MessageFrame(addTrustedRootCertificateRequestMessagePayload);
+
+                // TODO Send this using MRP.
+                addTrustedRootCerticateRequestMessageFrame.MessageFlags |= MessageFlags.S;
+                addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
+                addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
+
+                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.Payload.ToString());
+
+                await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
+
+                var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
+
+                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+
+
+
+
+
+
+
+
 
 
 

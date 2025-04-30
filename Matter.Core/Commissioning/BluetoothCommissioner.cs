@@ -2,6 +2,7 @@
 using Matter.Core.Cryptography;
 using Matter.Core.Discovery;
 using Matter.Core.Sessions;
+using Matter.Core.TLV;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -173,16 +174,16 @@ namespace Matter.Core.Commissioning
 
                             var initiatorRandomBytes2 = PBKDFParamResponse.GetOctetString(1);
                             var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
-                            var responderSessionId = PBKDFParamResponse.GetUnsignedShort(3);
+                            var responderSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
 
                             PBKDFParamResponse.OpenStructure(4);
 
-                            var iterations = PBKDFParamResponse.GetUnsignedShort(1);
+                            var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
                             var salt = PBKDFParamResponse.GetOctetString(2);
 
                             Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt));
 
-                            PBKDFParamResponse.CloseStructure();
+                            PBKDFParamResponse.CloseContainer();
 
                             // TODO Read tag 5
 
@@ -284,7 +285,7 @@ namespace Matter.Core.Commissioning
                             Console.WriteLine("Y: {0}", BitConverter.ToString(Y).Replace("-", ""));
                             Console.WriteLine("Verifier: {0}", BitConverter.ToString(Verifier).Replace("-", ""));
 
-                            pake2.CloseStructure();
+                            pake2.CloseContainer();
 
                             // Compute Pake3
                             //

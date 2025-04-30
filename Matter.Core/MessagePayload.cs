@@ -1,4 +1,6 @@
-﻿namespace Matter.Core
+﻿using Matter.Core.TLV;
+
+namespace Matter.Core
 {
     public class MessagePayload
     {
