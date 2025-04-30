@@ -9,17 +9,14 @@ using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
-using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.Utilities.IO.Pem;
-using Org.BouncyCastle.X509.Extension;
 using Org.BouncyCastle.X509;
-using System.Runtime.ConstrainedExecution;
+using Org.BouncyCastle.X509.Extension;
 using System.Security.Cryptography;
 using System.Text;
-using Org.BouncyCastle.Math;
 
 namespace Matter.Core.Commissioning
 {
@@ -580,84 +577,76 @@ namespace Matter.Core.Commissioning
 
                 await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
 
-                var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
+                // This command won't return a result.
+                //
 
-                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+                //var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
 
-
-
-
-
+                //Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
 
                 // Perform Step 13 of the Commissioning Flow.
                 //
+                Console.WriteLine("┌───────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 13         |");
+                Console.WriteLine("└───────────────────────────────┘");
+
                 var addNocRequest = new MatterTLV();
-                addTrustedRootCertificateRequest.AddStructure();
-                addTrustedRootCertificateRequest.AddBool(0, false);
-                addTrustedRootCertificateRequest.AddBool(1, false);
-                addTrustedRootCertificateRequest.AddArray(tagNumber: 2); // InvokeRequests
+                addNocRequest.AddStructure();
+                addNocRequest.AddBool(0, false);
+                addNocRequest.AddBool(1, false);
+                addNocRequest.AddArray(tagNumber: 2); // InvokeRequests
 
-                addTrustedRootCertificateRequest.AddStructure();
+                addNocRequest.AddStructure();
 
-                addTrustedRootCertificateRequest.AddList(tagNumber: 0); // CommandPath
+                addNocRequest.AddList(tagNumber: 0); // CommandPath
 
-                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
-                addTrustedRootCertificateRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Node Operational Credentials
-                addTrustedRootCertificateRequest.AddUInt16(tagNumber: 2, 0x06); // 11.18.6. Command AddNoc
+                addNocRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                addNocRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Node Operational Credentials
+                addNocRequest.AddUInt16(tagNumber: 2, 0x06); // 11.18.6. Command AddNoc
 
-                addTrustedRootCertificateRequest.EndContainer();
+                addNocRequest.EndContainer();
 
-                addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
+                addNocRequest.AddStructure(1); // CommandFields
 
-                addTrustedRootCertificateRequest.Add2OctetString(0, noc.GetEncoded()); // NOC
-                addTrustedRootCertificateRequest.Add2OctetString(2, _fabric.IPK); // IPK
+                addNocRequest.Add2OctetString(0, noc.GetEncoded()); // NOCValue
+                addNocRequest.Add2OctetString(2, _fabric.IPK); // IPKValue
+                addNocRequest.AddUInt64(3, _fabric.RootNodeId); // CaseAdminSubject
+                addNocRequest.AddUInt16(4, _fabric.AdminVendorId); // AdminVendorId
 
-                addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
+                addNocRequest.EndContainer(); // Close the CommandFields
 
-                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+                addNocRequest.EndContainer(); // Close the structure
 
-                addTrustedRootCertificateRequest.EndContainer(); // Close the array
+                addNocRequest.EndContainer(); // Close the array
 
-                addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
+                addNocRequest.AddUInt8(255, 12); // interactionModelRevision
 
-                addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+                addNocRequest.EndContainer(); // Close the structure
 
-                var addTrustedRootCertificateRequestMessagePayload = new MessagePayload(addTrustedRootCertificateRequest);
+                var addNocRequestMessagePayload = new MessagePayload(addNocRequest);
 
-                addTrustedRootCertificateRequestMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+                addNocRequestMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
                 // Table 14. Protocol IDs for the Matter Standard Vendor ID
-                addTrustedRootCertificateRequestMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
-                addTrustedRootCertificateRequestMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+                addNocRequestMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                addNocRequestMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
 
-                var addTrustedRootCerticateRequestMessageFrame = new MessageFrame(addTrustedRootCertificateRequestMessagePayload);
+                var addNocRequestMessageFrame = new MessageFrame(addNocRequestMessagePayload);
 
                 // TODO Send this using MRP.
-                addTrustedRootCerticateRequestMessageFrame.MessageFlags |= MessageFlags.S;
-                addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
-                addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
+                addNocRequestMessageFrame.MessageFlags |= MessageFlags.S;
+                addNocRequestMessageFrame.SecurityFlags = 0x00;
+                addNocRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.Payload.ToString());
+                Console.WriteLine(addNocRequestMessageFrame.MessagePayload.Payload.ToString());
 
-                await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
+                await paseExchange.SendAsync(addNocRequestMessageFrame);
 
-                var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
+                var addNocResponseMessageFrame = await paseExchange.ReceiveAsync();
 
-                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+                Console.WriteLine(addNocResponseMessageFrame.MessagePayload.Payload.ToString());
 
-
-
-
-
-
-
-
-
-
-
-                // Acknowledge the message for now as this is the end of the line.
-                //
-                await paseExchange.AcknowledgeMessageAsync(addTrustedRootCertificateResponseMessageFrame.MessageCounter);
+                await paseExchange.AcknowledgeMessageAsync(addNocRequestMessageFrame.MessageCounter);
 
 
                 /*

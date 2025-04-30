@@ -12,6 +12,7 @@ public class CertificateAuthorityTests
     [Test]
     public void GenerateRootCertificate()
     {
-        var rootCertificate = CertificateAuthority.GenerateRootCertificate();
+        var keypair = CertificateAuthority.GenerateKeyPair();
+        var rootCertificate = CertificateAuthority.GenerateRootCertificate(keypair);
     }
 }

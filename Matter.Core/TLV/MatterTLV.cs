@@ -555,7 +555,27 @@ namespace Matter.Core.TLV
 
                         sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
 
-                        length += 1;
+                        length += stringLength;
+                    }
+
+                    else if (elementType == 0x0D) // UTF-8 String, 2-octet length
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        // One octet length
+                        var stringLength = BitConverter.ToUInt16(bytes, index + length);
+
+                        length++;
+
+                        var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
+
+                        sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
+
+                        length += stringLength;
                     }
 
                     else if (elementType == 0x0E) // UTF-8 String, 4-octet length
@@ -581,7 +601,7 @@ namespace Matter.Core.TLV
                             length += 4;
                         }
 
-                        // One octet length
+                        // Four octet length
                         var stringLength = BitConverter.ToUInt32(bytes, index + length);
 
                         length += 4;
@@ -590,7 +610,7 @@ namespace Matter.Core.TLV
 
                         sb.AppendLine($"UTF-8 String, 4-octet length ({value})");
 
-                        length += 1;
+                        length += (int)stringLength;
                     }
 
                     else if (elementType == 0x10) // Octet String, 1-octet length
