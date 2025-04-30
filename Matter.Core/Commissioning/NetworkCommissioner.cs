@@ -536,9 +536,22 @@ namespace Matter.Core.Commissioning
 
                 encodedRootCertificate.Add1OctetString(1, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
                 encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
-                //encodedRootCertificate.Add1OctetString(0, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedRootCertificate.AddList(3); // Issuer
+                
+                encodedRootCertificate.EndContainer(); // Close List
+
                 encodedRootCertificate.AddUInt32(4, 0); // NotBefore
                 encodedRootCertificate.AddUInt32(5, UInt32.MaxValue); // NotAfter
+
+                encodedRootCertificate.AddList(6); // Subject
+                encodedRootCertificate.EndContainer(); // Close List
+
+                encodedRootCertificate.AddUInt8(7, 1); // public-key-algorithm
+                encodedRootCertificate.AddUInt8(8, 1); // elliptic-curve-id
+
+                var publicKey = _fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
+
+                encodedRootCertificate.Add1OctetString(9, publicKey.Q.GetEncoded()); // PublicKey
 
                 encodedRootCertificate.EndContainer();
 
