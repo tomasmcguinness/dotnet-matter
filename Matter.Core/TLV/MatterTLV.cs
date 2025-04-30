@@ -79,40 +79,40 @@ namespace Matter.Core.TLV
 
         // TODO Merge all these into one method, using the length of the value to determine
         // the size of the length field.
-        public MatterTLV Add1OctetString(long tagNumber, byte[] value)
+        public MatterTLV Add1OctetString(byte tagNumber, byte[] value)
         {
             // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
             // to produce a context tag for Octet String, 1 bytes length
             // 00110000
             //
             _values.Add(0x01 << 5 | 0x10); // Octet String, 1-octet length
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             _values.Add((byte)value.Length);
             _values.AddRange(value);
             return this;
         }
 
-        public MatterTLV Add2OctetString(long tagNumber, byte[] value)
+        public MatterTLV Add2OctetString(byte tagNumber, byte[] value)
         {
             // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 11
             // to produce a context tag for Octet String, 2 bytes length
             // 00110001
             //
             _values.Add(0x01 << 5 | 0x11); // Octet String, 2-octet length
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
             _values.AddRange(value);
             return this;
         }
 
-        public MatterTLV Add4OctetString(long tagNumber, byte[] value)
+        public MatterTLV Add4OctetString(byte tagNumber, byte[] value)
         {
             // This is a context type 1, shifted 5 bits and then OR'd with 12
             // to produce a context tag for Octet String, 4 bytes
             // 00110010
             //
             _values.Add(0x01 << 5 | 0x12); // Octet String, 4-octet length
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes((uint)value.Length));
             _values.AddRange(value);
             return this;
@@ -566,10 +566,10 @@ namespace Matter.Core.TLV
                             length++;
                         }
 
-                        // One octet length
+                        // Two octet length
                         var stringLength = BitConverter.ToUInt16(bytes, index + length);
 
-                        length++;
+                        length += 2;
 
                         var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
 
@@ -629,6 +629,26 @@ namespace Matter.Core.TLV
                         var value = bytes.AsSpan().Slice(index + length, stringLength).ToArray();
 
                         sb.AppendLine($"Octet String, 1-octet length ({BitConverter.ToString(value)})");
+
+                        length += stringLength;
+                    }
+
+                    else if (elementType == 0x11) // Octet String, 2-octet length
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        // Two octet length
+                        var stringLength = BitConverter.ToUInt16(bytes, index + length);
+
+                        length += 2;
+
+                        var value = bytes.AsSpan().Slice(index + length, stringLength).ToArray();
+
+                        sb.AppendLine($"Octet String, 2-octet length ({BitConverter.ToString(value)})");
 
                         length += stringLength;
                     }

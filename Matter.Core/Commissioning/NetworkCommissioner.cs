@@ -526,8 +526,22 @@ namespace Matter.Core.Commissioning
 
                 noc.CheckValidity();
 
-                // Perform Step 13 of the Commissioning Flow.
-                //
+                Console.WriteLine("┌───────────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 13 - AddTrustedRootCertificate |");
+                Console.WriteLine("└───────────────────────────────────────────────────┘");
+
+
+                var encodedRootCertificate = new MatterTLV();
+                encodedRootCertificate.AddStructure();
+
+                encodedRootCertificate.Add1OctetString(1, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
+                //encodedRootCertificate.Add1OctetString(0, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedRootCertificate.AddUInt32(4, 0); // NotBefore
+                encodedRootCertificate.AddUInt32(5, UInt32.MaxValue); // NotAfter
+
+                encodedRootCertificate.EndContainer();
+
                 var addTrustedRootCertificateRequest = new MatterTLV();
                 addTrustedRootCertificateRequest.AddStructure();
                 addTrustedRootCertificateRequest.AddBool(0, false);
@@ -546,7 +560,7 @@ namespace Matter.Core.Commissioning
 
                 addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
 
-                addTrustedRootCertificateRequest.Add1OctetString(0, _fabric.RootCertificate.GetEncoded().ToArray()); // RootCertificate
+                addTrustedRootCertificateRequest.Add1OctetString(0, encodedRootCertificate.GetBytes()); // RootCertificate
 
                 addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
 
@@ -586,9 +600,9 @@ namespace Matter.Core.Commissioning
 
                 // Perform Step 13 of the Commissioning Flow.
                 //
-                Console.WriteLine("┌───────────────────────────────┐");
-                Console.WriteLine("| COMMISSIONING STEP 13         |");
-                Console.WriteLine("└───────────────────────────────┘");
+                Console.WriteLine("┌────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 13 - AddNoc |");
+                Console.WriteLine("└────────────────────────────────┘");
 
                 var addNocRequest = new MatterTLV();
                 addNocRequest.AddStructure();
