@@ -1,32 +1,43 @@
-﻿using Zeroconf;
+﻿using System.Threading.Channels;
+using Zeroconf;
 
 namespace Matter.Core.Discovery
 {
-    internal class DnsDiscoverer
+    public class DnsDiscoverer
     {
-        public async Task DiscoverCommissionableNodes()
+        public Channel<string> ReceivedDataChannel { get; } = Channel.CreateBounded<string>(5);
+
+        public void DiscoverCommissionableNodes()
         {
-            ILookup<string, string> domains = await ZeroconfResolver.BrowseDomainsAsync(scanTime: TimeSpan.FromSeconds(30), 2, 2000, (s1, s2) =>
-            {
-                Console.WriteLine($"Found device {s1},{s2}");
-            });
+            var observable = ZeroconfResolver.BrowseDomainsContinuous(scanTime: TimeSpan.FromSeconds(30), 2, 2000);
 
-            var responses = await ZeroconfResolver.ResolveAsync(domains.Select(g => g.Key));
+            observable.Subscribe(
+                domain =>
+                {
+                    Console.WriteLine($"Domain found: {domain}");
+                    ReceivedDataChannel.Writer.TryWrite(domain.ToString());
+                },
+                error =>
+                {
+                    Console.WriteLine($"Error: {error}");
+                }
+                );
 
-            foreach (var resp in responses)
-            {
-                Console.WriteLine(resp);
-            }
+            //var responses = await ZeroconfResolver.ResolveAsync(domains.Select(g => g.Key));
 
-            IReadOnlyList<IZeroconfHost> results = await ZeroconfResolver.ResolveAsync("_matterc._udp.local.", TimeSpan.FromSeconds(30), 5, 2000);
+            //foreach (var resp in responses)
+            //{
+            //    Console.WriteLine(resp);
+            //}
 
-            foreach (var result in results)
-            {
-                Console.WriteLine(result.DisplayName);
-            }
-            ;
+            //IReadOnlyList<IZeroconfHost> results = await ZeroconfResolver.ResolveAsync("_matterc._udp.local.", TimeSpan.FromSeconds(30), 5, 2000);
 
-            Console.WriteLine("Finished ZeroConf discovery!");
+            //foreach (var result in results)
+            //{
+            //    Console.WriteLine(result.DisplayName);
+            //}
+
+            //Console.WriteLine("Finished ZeroConf discovery!");
         }
     }
 }

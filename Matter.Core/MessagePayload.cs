@@ -6,22 +6,49 @@ namespace Matter.Core
     {
         public MessagePayload()
         {
-            Payload = null;
+            ApplicationPayload = null;
         }
 
         public MessagePayload(MatterTLV payload)
         {
-            Payload = payload;
+            ApplicationPayload = payload;
         }
 
         public MessagePayload(byte[] messagePayload)
         {
-            ExchangeFlags = (ExchangeFlags)messagePayload[0];
-            ProtocolOpCode = messagePayload[1];
-            ProtocolId = BitConverter.ToUInt16(messagePayload, 2);
-            ExchangeID = BitConverter.ToUInt16(messagePayload, 4);
+            var index = 0;
+            ExchangeFlags = (ExchangeFlags)messagePayload[index];
+            index++;
 
-            Payload = new MatterTLV(messagePayload.AsSpan<byte>().Slice(6).ToArray());
+            ProtocolOpCode = messagePayload[index];
+            index++;
+
+            ExchangeID = BitConverter.ToUInt16(messagePayload, index);
+            index += 2;
+
+            if ((ExchangeFlags & ExchangeFlags.VendorPresent) != 0)
+            {
+                // TODO Store the Protocol Vendor ID value if present.
+                index += 2;
+            }
+
+            ProtocolId = BitConverter.ToUInt16(messagePayload, index);
+            index += 2;
+
+            if ((ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
+            {
+                AcknowledgedMessageCounter = BitConverter.ToUInt32(messagePayload, index);
+                index += 4;
+            }
+
+            if ((ExchangeFlags & ExchangeFlags.SecuredExtensions) != 0)
+            {
+                var securedExtensionsLength = BitConverter.ToUInt16(messagePayload, index);
+                index += 2; // Length ushort
+                index += securedExtensionsLength;
+            }
+
+            ApplicationPayload = new MatterTLV(messagePayload.AsSpan().Slice(index).ToArray());
         }
 
         public ExchangeFlags ExchangeFlags { get; set; }
@@ -34,7 +61,7 @@ namespace Matter.Core
 
         public uint AcknowledgedMessageCounter { get; set; }
 
-        public MatterTLV? Payload { get; set; }
+        public MatterTLV? ApplicationPayload { get; set; }
 
         internal void Serialize(MatterMessageWriter writer)
         {
@@ -50,9 +77,9 @@ namespace Matter.Core
 
             // Write the bytes of the payload!
             //
-            if (Payload is not null)
+            if (ApplicationPayload is not null)
             {
-                Payload.Serialize(writer);
+                ApplicationPayload.Serialize(writer);
             }
         }
     }

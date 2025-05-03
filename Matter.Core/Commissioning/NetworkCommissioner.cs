@@ -15,8 +15,10 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
+using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Text;
+using Windows.Media.Capture;
 
 namespace Matter.Core.Commissioning
 {
@@ -56,8 +58,17 @@ namespace Matter.Core.Commissioning
 
                 var unsecureExchange = session.CreateExchange();
 
+                Console.WriteLine("┌───────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 6 - Establish PASE |");
+                Console.WriteLine("└───────────────────────────────────────┘");
+
                 // Perform the PASE exchange.
                 //
+
+                Console.WriteLine("┌───────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 6 - Send PBKDFParamRequest |");
+                Console.WriteLine("└───────────────────────────────────────────────┘");
+
                 var PBKDFParamRequest = new MatterTLV();
                 PBKDFParamRequest.AddStructure();
 
@@ -98,7 +109,9 @@ namespace Matter.Core.Commissioning
 
                 await unsecureExchange.SendAsync(messageFrame);
 
-                var responseMessageFrame = await unsecureExchange.ReceiveAsync();
+                var responseMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
+
+                Console.WriteLine(responseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
                 Console.WriteLine("PBKDFParamResponse received");
                 Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
@@ -114,7 +127,7 @@ namespace Matter.Core.Commissioning
 
                 // We have to walk the response.
                 //
-                var PBKDFParamResponse = responseMessageFrame.MessagePayload.Payload;
+                var PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
 
                 PBKDFParamResponse.OpenStructure();
 
@@ -207,7 +220,7 @@ namespace Matter.Core.Commissioning
 
                 await unsecureExchange.SendAsync(pake1MessageFrame);
 
-                var pake2MessageFrame = await unsecureExchange.ReceiveAsync();
+                var pake2MessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
                 Console.WriteLine("Message received");
                 Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
@@ -221,7 +234,7 @@ namespace Matter.Core.Commissioning
                     pake2MessageFrame.MessagePayload.ProtocolId
                 );
 
-                var pake2 = pake2MessageFrame.MessagePayload.Payload;
+                var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
 
                 pake2.OpenStructure();
 
@@ -275,7 +288,7 @@ namespace Matter.Core.Commissioning
 
                 await unsecureExchange.SendAsync(pake3MessageFrame);
 
-                var pakeFinishedMessageFrame = await unsecureExchange.ReceiveAsync();
+                var pakeFinishedMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
                 Console.WriteLine("StatusReport received");
 
@@ -311,6 +324,10 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(format: "PeerSessionId: {0}", peerSessionId);
 
+                Console.WriteLine("┌────────────────┐");
+                Console.WriteLine("| PASE Complete! |");
+                Console.WriteLine("└────────────────┘");
+
                 // Create a PASE session
                 //
                 var paseSession = new PaseSecureSession(udpConnection, peerSessionId, encryptKey, decryptKey);
@@ -319,6 +336,7 @@ namespace Matter.Core.Commissioning
                 //
                 var paseExchange = paseSession.CreateExchange();
 
+                #region Vendor Name Command
                 /*
                 // To test the secure session, fetch the Vendor Name using the Interaction Model.
                 // ReadRequest payload.
@@ -411,10 +429,12 @@ namespace Matter.Core.Commissioning
                 //await paseExchange.SendAsync(armFailsafeMessageFrame);
 
                 //await paseExchange.ReceiveAsync();
+                #endregion
 
+                Console.WriteLine("┌────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 11 - Sending CSRRequest |");
+                Console.WriteLine("└────────────────────────────────────────────┘");
 
-                // Perform Step 11 of the Commissioning Flow.
-                //
                 var csrRequest = new MatterTLV();
                 csrRequest.AddStructure();
                 csrRequest.AddBool(0, false);
@@ -461,17 +481,19 @@ namespace Matter.Core.Commissioning
                 csrRequestMessageFrame.SecurityFlags = 0x00;
                 csrRequestMessageFrame.SourceNodeID = 0x00;
 
+                Console.WriteLine(csrRequestMessageFrame.MessagePayload.ApplicationPayload.ToString());
+
                 await paseExchange.SendAsync(csrRequestMessageFrame);
 
-                var csrResponseMessageFrame = await paseExchange.ReceiveAsync();
+                Console.WriteLine("┌───────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 11 - Receiving CSRResponse |");
+                Console.WriteLine("└───────────────────────────────────────────────┘");
 
-                Console.WriteLine(csrResponseMessageFrame.MessagePayload.Payload.ToString());
+                var csrResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                // Perform Step 12 of the commissioning flow.
+                Console.WriteLine(csrResponseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
-                //Pkcs10CertificationRequest decodedCsr = (Pkcs10CertificationRequest)new PemReader(new StringReader(csr)).ReadObject();
-
-                var csrPayload = csrResponseMessageFrame.MessagePayload.Payload;
+                var csrPayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
 
                 csrPayload.OpenStructure();
                 csrPayload.GetBoolean(0);
@@ -491,11 +513,14 @@ namespace Matter.Core.Commissioning
 
                 var nocsrString = Encoding.ASCII.GetString(nocsrBytes.ToArray());
 
-                var test = new MatterTLV(nocsrBytes);
-                Console.WriteLine(test);
+                var nocPayload = new MatterTLV(nocsrBytes);
 
-                test.OpenStructure();
-                var derBytes = test.GetOctetString(1);
+                Console.WriteLine("Decoded NOC");
+                Console.WriteLine();
+                Console.WriteLine(nocPayload);
+
+                nocPayload.OpenStructure();
+                var derBytes = nocPayload.GetOctetString(1);
 
                 var certificateRequest = new Pkcs10CertificationRequest(derBytes);
 
@@ -526,34 +551,88 @@ namespace Matter.Core.Commissioning
 
                 noc.CheckValidity();
 
+                #region AddTrustedRootCertificate
+
                 Console.WriteLine("┌───────────────────────────────────────────────────┐");
-                Console.WriteLine("| COMMISSIONING STEP 13 - AddTrustedRootCertificate |");
+                Console.WriteLine("| COMMISSIONING STEP 12 - AddTrustedRootCertificate |");
                 Console.WriteLine("└───────────────────────────────────────────────────┘");
 
+                paseExchange = paseSession.CreateExchange();
 
                 var encodedRootCertificate = new MatterTLV();
                 encodedRootCertificate.AddStructure();
 
                 encodedRootCertificate.Add1OctetString(1, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
                 encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
+
                 encodedRootCertificate.AddList(3); // Issuer
-                
+                encodedRootCertificate.AddUInt64(20, _fabric.RootCertificateId);
                 encodedRootCertificate.EndContainer(); // Close List
 
-                encodedRootCertificate.AddUInt32(4, 0); // NotBefore
-                encodedRootCertificate.AddUInt32(5, UInt32.MaxValue); // NotAfter
+                var notBefore = new DateTimeOffset(_fabric.RootCertificate.NotBefore).ToUnixTimeMilliseconds();
+                var notAfter = new DateTimeOffset(_fabric.RootCertificate.NotAfter).ToUnixTimeMilliseconds();
+
+                encodedRootCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
+                encodedRootCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
 
                 encodedRootCertificate.AddList(6); // Subject
+                encodedRootCertificate.AddUInt64(20, _fabric.RootCertificateId);
                 encodedRootCertificate.EndContainer(); // Close List
 
                 encodedRootCertificate.AddUInt8(7, 1); // public-key-algorithm
                 encodedRootCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
                 var publicKey = _fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
-
                 encodedRootCertificate.Add1OctetString(9, publicKey.Q.GetEncoded()); // PublicKey
 
-                encodedRootCertificate.EndContainer();
+                encodedRootCertificate.AddList(10); // Extensions
+
+                encodedRootCertificate.AddStructure(1); // Basic Constraints
+                encodedRootCertificate.AddBool(1, true); // is-ca
+                encodedRootCertificate.EndContainer(); // Close Basic Constraints
+
+                // 6.5.11.2.Key Usage Extension We want keyCertSign (0x20) and CRLSign (0x40)
+                encodedRootCertificate.AddUInt8(2, 0x60);
+
+                encodedRootCertificate.Add1OctetString(4, _fabric.RootKeyIdentifier); // subject-key-id
+                encodedRootCertificate.Add1OctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
+
+                encodedRootCertificate.EndContainer(); // Close Extensions
+
+
+                Console.WriteLine(_fabric.RootCertificate);
+
+                // Signature. This is an ASN1 EC Signature that is DER encoded.
+                // The Matter specification just wants the two parts r & s.
+                //
+                var signature = _fabric.RootCertificate.GetSignature();
+
+                AsnDecoder.ReadSequence(signature.AsSpan(), AsnEncodingRules.DER, out var offset, out var length, out _);
+
+                var source = signature.AsSpan().Slice(offset, length).ToArray();
+
+                //AsnDecoder.TryReadInt32(source, AsnEncodingRules.DER, out var a, out var bytesConsumed);
+                var r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out var bytesConsumed);
+                var s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
+
+                //var a = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out var bytesConsumed);
+
+                // Skip 4
+                //var r = signature.AsSpan().Slice(4, 32).ToArray();
+                //var s = signature.AsSpan().Slice(38, 32).ToArray();
+
+                var sig = r.ToByteArray(isUnsigned: true).Concat(s.ToByteArray(isUnsigned: true)).ToArray();
+
+                Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
+
+                encodedRootCertificate.Add1OctetString(11, sig);
+
+                encodedRootCertificate.EndContainer(); // Close Structure
+
+                Console.WriteLine("───────────────────────────────────────────────────");
+                Console.WriteLine("EncodedRootCertificate");
+                Console.WriteLine(encodedRootCertificate);
+                Console.WriteLine("───────────────────────────────────────────────────");
 
                 var addTrustedRootCertificateRequest = new MatterTLV();
                 addTrustedRootCertificateRequest.AddStructure();
@@ -566,14 +645,14 @@ namespace Matter.Core.Commissioning
                 addTrustedRootCertificateRequest.AddList(tagNumber: 0); // CommandPath
 
                 addTrustedRootCertificateRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
-                addTrustedRootCertificateRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Operational Credentials
+                addTrustedRootCertificateRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Node Operational Credentials
                 addTrustedRootCertificateRequest.AddUInt16(tagNumber: 2, 0x0B); // 11.18.6. Command AddTrustedRootCertificate
 
                 addTrustedRootCertificateRequest.EndContainer();
 
                 addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
 
-                addTrustedRootCertificateRequest.Add1OctetString(0, encodedRootCertificate.GetBytes()); // RootCertificate
+                addTrustedRootCertificateRequest.Add2OctetString(0, encodedRootCertificate.GetBytes()); // RootCertificate
 
                 addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
 
@@ -584,6 +663,9 @@ namespace Matter.Core.Commissioning
                 addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
 
                 addTrustedRootCertificateRequest.EndContainer(); // Close the structure
+
+
+
 
                 var addTrustedRootCertificateRequestMessagePayload = new MessagePayload(addTrustedRootCertificateRequest);
 
@@ -600,22 +682,21 @@ namespace Matter.Core.Commissioning
                 addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
                 addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.Payload.ToString());
+                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.ApplicationPayload);
 
                 await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
 
-                // This command won't return a result.
-                //
+                var addTrustedRootCertificateResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                //var addTrustedRootCertificateResponseMessageFrame = await paseExchange.ReceiveAsync();
+                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.ApplicationPayload);
 
-                //Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.Payload.ToString());
+                #endregion
 
                 // Perform Step 13 of the Commissioning Flow.
                 //
-                Console.WriteLine("┌────────────────────────────────┐");
-                Console.WriteLine("| COMMISSIONING STEP 13 - AddNoc |");
-                Console.WriteLine("└────────────────────────────────┘");
+                Console.WriteLine("┌───────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 13 - AddNocRequest |");
+                Console.WriteLine("└───────────────────────────────────────┘");
 
                 var addNocRequest = new MatterTLV();
                 addNocRequest.AddStructure();
@@ -665,14 +746,16 @@ namespace Matter.Core.Commissioning
                 addNocRequestMessageFrame.SecurityFlags = 0x00;
                 addNocRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(addNocRequestMessageFrame.MessagePayload.Payload.ToString());
+                Console.WriteLine(addNocRequestMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
                 await paseExchange.SendAsync(addNocRequestMessageFrame);
 
-                var addNocResponseMessageFrame = await paseExchange.ReceiveAsync();
+                var addNocResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(addNocResponseMessageFrame.MessagePayload.Payload.ToString());
+                Console.WriteLine(addNocResponseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
+                // TEMP: Standalone ack the last message.
+                //
                 await paseExchange.AcknowledgeMessageAsync(addNocRequestMessageFrame.MessageCounter);
 
 

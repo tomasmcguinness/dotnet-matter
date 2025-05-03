@@ -1,7 +1,7 @@
 ﻿
 namespace Matter.Core
 {
-    internal interface IConnection
+    public interface IConnection
     {
         Task<byte[]> ReadAsync();
 

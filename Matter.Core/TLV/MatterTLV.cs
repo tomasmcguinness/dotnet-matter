@@ -77,6 +77,47 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        internal void AddUTF8String(byte tagNumber, string value)
+        {
+            var utf8String = Encoding.UTF8.GetBytes(value);
+            var stringLength = value.Length;
+
+            if (stringLength < 255)
+            {
+                _values.Add(0x01 << 5 | 0x0C); // UTFString, 1-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(utf8String);
+            }
+            else if (stringLength < ushort.MaxValue)
+            {
+                _values.Add(0x01 << 5 | 0x0D); // UTFString, 2-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((ushort)stringLength));
+                _values.AddRange(utf8String);
+            }
+            else if (stringLength < uint.MaxValue)
+            {
+                _values.Add(0x01 << 5 | 0x0E); // UTFString, 4-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((uint)stringLength));
+                _values.AddRange(utf8String);
+            }
+            // We can only get an int length, so we're limited to 4-octet.
+            //else if (stringLength < ulong.MaxValue)
+            //{
+            //    _values.Add(0x01 << 5 | 0x0F); // UTFString, 4-octet length
+            //    _values.Add(tagNumber);
+            //    _values.AddRange(BitConverter.GetBytes((ulong)stringLength));
+            //    _values.AddRange(utf8String);
+            //}
+            else
+            {
+                throw new Exception("String length is too long to encode in TLV format");
+            }
+        }
+
+
+
         // TODO Merge all these into one method, using the length of the value to determine
         // the size of the length field.
         public MatterTLV Add1OctetString(byte tagNumber, byte[] value)
@@ -389,6 +430,7 @@ namespace Matter.Core.TLV
         public override string ToString()
         {
             var sb = new StringBuilder();
+            sb.Append("\n");
 
             var indentation = 0;
 
@@ -553,7 +595,7 @@ namespace Matter.Core.TLV
 
                         var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
 
-                        sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
+                        sb.AppendLine($"UTF-8 String, 1-octet length ({length:2X}) ({value})");
 
                         length += stringLength;
                     }
@@ -628,7 +670,7 @@ namespace Matter.Core.TLV
 
                         var value = bytes.AsSpan().Slice(index + length, stringLength).ToArray();
 
-                        sb.AppendLine($"Octet String, 1-octet length ({BitConverter.ToString(value)})");
+                        sb.AppendLine($"Octet String, 1-octet length ({stringLength}) ({BitConverter.ToString(value)})");
 
                         length += stringLength;
                     }

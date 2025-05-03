@@ -2,7 +2,7 @@
 
 namespace Matter.Core.Sessions
 {
-    internal class PaseSecureSession : ISession
+    public class PaseSecureSession : ISession
     {
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
@@ -16,20 +16,14 @@ namespace Matter.Core.Sessions
 
             using (var rng = RandomNumberGenerator.Create())
             {
-                //var randomBytes = new byte[2];
-
-                //rng.GetBytes(randomBytes);
-                //ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
-
                 SessionId = sessionId;
-
                 Console.WriteLine($"Created PASE Secure Session: {SessionId}");
             }
-
-            _decryptionKey = decryptionKey;
         }
 
         public ushort SessionId { get; }
+
+        public bool UseMRP => true;
 
         public MessageExchange CreateExchange()
         {
@@ -52,20 +46,12 @@ namespace Matter.Core.Sessions
 
         public async Task SendAsync(byte[] message)
         {
-            // TODO Encrypt the message.
-
-            //message.SessionID = _sessionId;
-
             await _connection.SendAsync(message);
         }
 
         public async Task<byte[]> ReadAsync()
         {
-            var message = await _connection.ReadAsync();
-
-            // TODO Decrypt the message.
-
-            return message;
+            return await _connection.ReadAsync();
         }
 
         public byte[] Encode(MessageFrame messageFrame)
@@ -96,11 +82,11 @@ namespace Matter.Core.Sessions
 
             Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
-            byte[] encryptedPayload = new byte[parts.Payload.Length];
+            byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
             byte[] tag = new byte[16];
 
             var encryptor = new AesCcm(_encryptionKey);
-            encryptor.Encrypt(nonce, parts.Payload, encryptedPayload, tag, additionalData);
+            encryptor.Encrypt(nonce, parts.MessagePayload, encryptedPayload, tag, additionalData);
 
             var totalPayload = encryptedPayload.Concat(tag);
 
@@ -114,12 +100,12 @@ namespace Matter.Core.Sessions
             //
             var parts = new MessageFrameParts(payload);
 
-            //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
-            //Console.WriteLine("Incoming Payload: {0}", BitConverter.ToString(parts.Payload));
+            Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
+            Console.WriteLine("Incoming Encrypted MessagePayload: {0}", BitConverter.ToString(parts.MessagePayload));
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            Console.WriteLine("Decoding encrypted message...");
+            Console.WriteLine("Decrypting MessagePayload...");
 
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
@@ -143,15 +129,17 @@ namespace Matter.Core.Sessions
 
             var additionalData = memoryStream.ToArray();
 
-            Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
+            //Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
-            byte[] decryptedPayload = new byte[parts.Payload.Length - 16];
+            byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 
-            var tag = parts.Payload.AsSpan().Slice(parts.Payload.Length - 16, 16);
-            var encryptedPayload = parts.Payload.AsSpan().Slice(0, parts.Payload.Length - 16);
+            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
+            var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
 
             var encryptor = new AesCcm(_decryptionKey);
             encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+
+            Console.WriteLine("Decrypted MessagePayload: {0}", BitConverter.ToString(decryptedPayload));
 
             messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 

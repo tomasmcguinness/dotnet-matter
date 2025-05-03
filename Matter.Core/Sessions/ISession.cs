@@ -1,8 +1,10 @@
 ﻿namespace Matter.Core.Sessions
 {
-    internal interface ISession
+    public interface ISession
     {
         ushort SessionId { get; }
+
+        bool UseMRP { get; }
 
         MessageExchange CreateExchange();
 

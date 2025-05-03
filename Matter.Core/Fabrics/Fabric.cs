@@ -1,7 +1,8 @@
 ﻿using Matter.Core.Certificates;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Math;
 using Org.BouncyCastle.X509;
-using System.Numerics;
 using System.Security.Cryptography;
 
 namespace Matter.Core.Fabrics
@@ -9,6 +10,8 @@ namespace Matter.Core.Fabrics
     internal class Fabric
     {
         public AsymmetricCipherKeyPair KeyPair { get; private set; }
+
+        public ulong RootCertificateId { get; private set; }
 
         public X509Certificate RootCertificate { get; private set; }
 
@@ -18,22 +21,29 @@ namespace Matter.Core.Fabrics
 
         public ushort AdminVendorId { get; private set; }
 
+        public byte[] RootKeyIdentifier { get; private set; }
+
         public static Fabric CreateNew(string fabricName)
         {
-            // TODO Save this Fabric
-            //
-            var keyPair = CertificateAuthority.GenerateKeyPair();
-            var rootCertificate = CertificateAuthority.GenerateRootCertificate(keyPair);
+            var fabricId = (ulong)0;
+            var rootNodeId = (ulong)0;
+            var rootCertificateId = (ulong)0;
 
-            var random = RandomNumberGenerator.GetBytes(8);
-            var rootNodeId = BitConverter.ToUInt64(random);
+            var keyPair = CertificateAuthority.GenerateKeyPair();
+            var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keyPair);
+
+            // TODO I'm doing this twice; here and in GenerateRootCertificate()
+            var publicKey = keyPair.Public as ECPublicKeyParameters;
+            var rootKeyIdentifier = SHA256.HashData(publicKey.Q.GetEncoded()).AsSpan().Slice(0, 20).ToArray();
 
             return new Fabric()
             {
                 RootNodeId = rootNodeId,
                 AdminVendorId = 0xFFF1, // Default value from Matter specification 
                 KeyPair = keyPair,
+                RootCertificateId = rootCertificateId,
                 RootCertificate = rootCertificate,
+                RootKeyIdentifier = rootKeyIdentifier,
                 IPK = RandomNumberGenerator.GetBytes(16),
             };
         }

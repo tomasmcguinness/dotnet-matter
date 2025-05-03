@@ -26,7 +26,7 @@ namespace Matter.Core
             {
                 var receiveResult = await _udpClient.ReceiveAsync();
 
-                Console.WriteLine("Received {0} bytes from {1}:{2}", receiveResult.Buffer.Length, receiveResult.RemoteEndPoint.Address, receiveResult.RemoteEndPoint.Port);
+                Console.WriteLine("UDP: Received {0} bytes from {1}:{2}", receiveResult.Buffer.Length, receiveResult.RemoteEndPoint.Address, receiveResult.RemoteEndPoint.Port);
 
                 await _receivedDataChannel.Writer.WriteAsync(receiveResult.Buffer.ToArray());
 

@@ -2,7 +2,7 @@
 
 namespace Matter.Core.Sessions
 {
-    internal class UnsecureSession : ISession
+    public class UnsecureSession : ISession
     {
         private IConnection _connection;
 
@@ -12,6 +12,8 @@ namespace Matter.Core.Sessions
         }
 
         public ushort SessionId => 0;
+
+        public bool UseMRP => false;
 
         public MessageExchange CreateExchange()
         {
@@ -47,14 +49,14 @@ namespace Matter.Core.Sessions
         public byte[] Encode(MessageFrame messageFrame)
         {
             var parts = new MessageFrameParts(messageFrame);
-            return parts.Header.Concat(parts.Payload).ToArray();
+            return parts.Header.Concat(parts.MessagePayload).ToArray();
         }
 
         public MessageFrame Decode(byte[] payload)
         {
             var messageParts = new MessageFrameParts(payload);
             var messageFrame = messageParts.MessageFrameWithHeaders();
-            messageFrame.MessagePayload = new MessagePayload(messageParts.Payload);
+            messageFrame.MessagePayload = new MessagePayload(messageParts.MessagePayload);
             return messageFrame;
         }
     }

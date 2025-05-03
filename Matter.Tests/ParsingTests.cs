@@ -1,12 +1,53 @@
-﻿using Matter.Core.TLV;
+﻿using Matter.Core;
+using Matter.Core.Sessions;
+using Matter.Core.TLV;
 
 namespace Matter.Tests;
 
-public class MatterTLVTests
+public class ParsingTests
 {
     [SetUp]
     public void Setup()
     {
+    }
+
+    [Test]
+    public void DecodeCertificatePayload()
+    {
+        //var payload = "153001010024020137032414001826047634c72d2605f66a74423706241400182407012408013009410408c7b99cf413c8b761779635a77aa6d9a39c46e138406ffa4cb5763396ef29a6eaf46bd1c747ada0affa4cd57a40fad1495998bc342c9caa5b7b5c2c09fe0d02370a3501290118240260300414fdceb4a9d6379cd29c0fdda2101e6ad2a4177f2b300514fdceb4a9d6379cd29c0fdda2101e6ad2a4177f2b18300b409e598aa37be8a5b860af4650c784e08f61e023c71945405ce31ba4ecd666ec8ac32d8cad72bdef146eae6bb9e96f8dd8d67ce95af29f4a7f47a9327f396a44a318";
+        var payload = "153001010024020137032414001826047634c72d2605f66a7442370624140018240701240801300941045f2fed6a8fccb5276a8880c140a408cd0e32b861a64868203ab1d305c26b42b073d5d3f582c12c5fa6bed8870c5a833d9cfa04fe635926f29b5dc5999e1dc399370a3501290118240260300414ecdc34bc8a9872984cb52a0aa526140a3af9bcb3300514ecdc34bc8a9872984cb52a0aa526140a3af9bcb318300b40cab8735099dc984c679af164ea3f28f96ea228bfb7a39bfa91a341af7ce733a63e1ffd797801f02f8c19124db5c3899a04557bcd412f1b0259fea9c36da19ebd18";
+        var payloadAsBytes = StringToByteArray(payload);
+
+        MatterTLV tlv = new MatterTLV(payloadAsBytes);
+
+        Console.WriteLine(tlv.ToString());
+    }
+
+    [Test]
+    public void Test()
+    {
+        // This payload cannot be parsed.
+        //
+
+        var decryptKey = "B0-74-1E-81-B3-5B-A3-3E-08-B4-0F-CE-D2-FE-3A-BB";
+        decryptKey = decryptKey.Replace("-", string.Empty);
+        var encryptKey = "41-D8-F6-02-A9-D3-00-F7-BB-14-37-3D-2B-A0-8D-79";
+        encryptKey = encryptKey.Replace("-", string.Empty);
+        var sessionId = (ushort)63813;
+        var session = new PaseSecureSession(new FakeConnection(), sessionId, StringToByteArray(encryptKey), StringToByteArray(decryptKey));
+
+        var encryptedPayload = "01-C0-89-00-2F-23-16-03-00-00-00-00-00-00-00-00-5B-92-C7-29-67-75-BC-62-2E-F0-19-51-63-B7-CC-50-9B-4B-4F-4B-7A-40-DF-C7-5B-0C-3F-D2-6E-08-EA-36-9F-4B-E0-ED-FE-55-44-58-29-40-C7-4D-BA-A7-50-7E-AB-4D-D6-F5-04-E1-95-92-14-08-78-E3-6D-D6-33-EB-0F-82-1F-51-21-F3-87-C0-FC-26-BC-56-54-E3-18-A1-9C-36-7D-A9-F3-E1-3B-41-98-2F-11-D4-14-F2-63-E4-70-BD-A9-C2-41-E7-84-90-2F-C5-30-23-2D-07-6D-2D-6A-79-71-43-E8-47-02-25-B3-56-5A-6D-BC-36-0D-36-9C-66-3F-BF-9A-8F-13-F0-19-CA-86-FC-CF-F1-95-73-E5-DF-7D-7C-22-85-C9-19-B2-34-F2-0D-20-97-4F-A6-BC-29-4C-F0-9F-AC-92-91-7C-D0-39-FE-99-23-41-C5-58-CE-59-92-8D-EA-3C-04-02-F4-F4-CE-97-3A-F3-16-DF-E5-B0-3E-5C-87-0B-13-C0-AE-59-EB-E6-4E-DB-FB-19-52-4D-DE-07-FD-16-9D-9D-24-AA-09-2A-B1-DA-3E-62-01-35-97-38-6E-A6-12-1A-05-17-26-1C-52-82-F9-68-07-0E-E9-1F-7C-8D-E7-5A-86-8D-81-9A-21-C9-C1-50-AD-29-A9-27-25-5E-5E-34-76-BD-68-47-7B-BF-72-7A-B4-37-D5-68-E5-E7-15-29-B5-20-CB-E7-46-F1-F6-19-9C-EF-56-1D-26-E5-13-79-F1-63-48-B7-D6-0B-03-79-D9-3A-13-D4-FF-6D-BC-C5-CC-FC-B8-E3-CE-CE-3F-FD-F1-8C-18-95-AD-42-EA-B5-50-E1-6E-EF-B1-C7-6F-E0-7B-F4-5F-E3-ED-8E-16-50-1C-45-6C-49-9B-F4-F7-CD-BD-C8-0B-A2-D1-74-27-43-8A-11-0D-CE-77-7B-8A";
+
+        encryptedPayload = encryptedPayload.Replace("-", string.Empty);
+
+        var payloadAsBytes = StringToByteArray(encryptedPayload);
+
+        var messageFrame = session.Decode(payloadAsBytes);
+
+        Assert.That(messageFrame.MessageFlags, Is.EqualTo(MessageFlags.DSIZ1));
+        Assert.That(messageFrame.MessagePayload.ExchangeID, Is.EqualTo(2633));
+        Assert.That(messageFrame.MessagePayload.ProtocolId, Is.EqualTo(0x01));
+        Assert.That(messageFrame.MessagePayload.ProtocolOpCode, Is.EqualTo(0x09));
     }
 
     [Test]

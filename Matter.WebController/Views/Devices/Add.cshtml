@@ -4,10 +4,26 @@
 
 <a href="#" onclick="startAdd()">Add Device</a>
 
-<script type="text/javascript">
+<script src="~/js/signalr/dist/browser/signalr.js"></script>
+<script src="~/js/discovery.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<div id="app">{{ message }}</div>
+
+<script>
 
     function startAdd() {
         console.log('Trigger Add');
     }
+
+       const app = Vue.createApp({
+       data() {
+         return {
+           message: "Hello World!"
+         }
+       }
+     })
+
+    app.mount('#app')
 
 </script>

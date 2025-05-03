@@ -1,16 +1,20 @@
 ﻿using Matter.Core.Sessions;
+using System.Threading.Channels;
 
 namespace Matter.Core
 {
-    class MessageExchange
+    public class MessageExchange
     {
         private ushort _exchangeId;
         private ISession _session;
+        private Thread _readingThread;
 
         private uint _receivedMessageCounter = 255;
         private uint _acknowledgedMessageCounter = 255;
 
         private readonly Timer _acknowledgementTimer;
+
+        private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(5);
 
         // For this, the role will always be Initiator.
         //
@@ -20,6 +24,9 @@ namespace Matter.Core
             _session = session;
 
             //_acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 5000, 5000);
+
+            _readingThread = new Thread(new ThreadStart(ReceiveAsync));
+            _readingThread.Start();
         }
 
         private async void SendStandaloneAcknowledgement(object? state)
@@ -53,6 +60,11 @@ namespace Matter.Core
                 message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
             }
 
+            if (_session.UseMRP)
+            {
+                message.MessagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
+            }
+
             // TODO Turn the ProtocolId and OpCode into nice names.
             //
             Console.WriteLine(">>> Sending Message {0} | {1:X2} | {2:X2}", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode);
@@ -62,20 +74,63 @@ namespace Matter.Core
             await _session.SendAsync(bytes);
         }
 
-        public async Task<MessageFrame> ReceiveAsync()
+        public async Task<MessageFrame> WaitForNextMessageAsync()
         {
-            var bytes = await _session.ReadAsync();
+            Console.WriteLine("Waiting for incoming message...");
 
-            var messageFrame = _session.Decode(bytes);
+            return await _incomingMessageChannel.Reader.ReadAsync();
+        }
 
-            if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Reliability) != 0)
+        private async void ReceiveAsync()
+        {
+            do
             {
-                _receivedMessageCounter = messageFrame.MessageCounter;
-            }
+                try
+                {
+                    var bytes = await _session.ReadAsync();
 
-            Console.WriteLine("Received Message {0}", messageFrame.MessageCounter);
+                    var messageFrame = _session.Decode(bytes);
 
-            return messageFrame;
+                    Console.WriteLine("<<< Received Message {0} | {1:X2} | {2:X2}", messageFrame.MessageCounter, messageFrame.MessagePayload.ProtocolId, messageFrame.MessagePayload.ProtocolOpCode);
+
+                    // Check if we have this message already.
+                    if (_receivedMessageCounter >= messageFrame.MessageCounter)
+                    {
+                        Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
+                        return;
+                    }
+
+                    //if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Reliability) != 0)
+                    //{
+                    _receivedMessageCounter = messageFrame.MessageCounter;
+                    //}
+
+                    if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
+                    {
+                        Console.WriteLine("Received Message acknowledges outgoing message {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
+                    }
+
+                    // If this is a standalone acknowledgement, don't pass this up a level.
+                    //
+                    if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
+                    {
+                        Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
+                        return;
+                    }
+
+                    // This message needs processing, so put it onto the queue.
+                    //
+                    await _incomingMessageChannel.Writer.WriteAsync(messageFrame);
+
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Failed to read incoming message: {0}", ex.Message);
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+
+            } while (true);
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter)
@@ -95,7 +150,7 @@ namespace Matter.Core
 
             await SendAsync(messageFrame);
 
-            Console.WriteLine("Sent Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
+            Console.WriteLine("Sent Standalone Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
         }
     }
 }

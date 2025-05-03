@@ -12,7 +12,11 @@ public class CertificateAuthorityTests
     [Test]
     public void GenerateRootCertificate()
     {
+        var fabricName = "TestFabric";
+        var fabricId = (ulong)Random.Shared.NextInt64();
+        var rootCertificateId = (ulong)Random.Shared.NextInt64();
         var keypair = CertificateAuthority.GenerateKeyPair();
-        var rootCertificate = CertificateAuthority.GenerateRootCertificate(keypair);
+
+        var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keypair);
     }
 }

@@ -152,7 +152,7 @@ namespace Matter.Core.Commissioning
                             messageFrame.SourceNodeID = (ulong)sourceNodeId;
 
                             await unsecureExchange.SendAsync(messageFrame);
-                            var responseMessageFrame = await unsecureExchange.ReceiveAsync();
+                            var responseMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
                             Console.WriteLine("Message received");
                             Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
@@ -168,7 +168,7 @@ namespace Matter.Core.Commissioning
 
                             // We have to walk the response.
                             //
-                            var PBKDFParamResponse = responseMessageFrame.MessagePayload.Payload;
+                            var PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
 
                             PBKDFParamResponse.OpenStructure();
 
@@ -261,7 +261,7 @@ namespace Matter.Core.Commissioning
 
                             await unsecureExchange.SendAsync(pake1MessageFrame);
 
-                            var pake2MessageFrame = await unsecureExchange.ReceiveAsync();
+                            var pake2MessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
                             Console.WriteLine("Message received");
                             Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
@@ -275,7 +275,7 @@ namespace Matter.Core.Commissioning
                                 pake2MessageFrame.MessagePayload.ProtocolId
                             );
 
-                            var pake2 = pake2MessageFrame.MessagePayload.Payload;
+                            var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
 
                             pake2.OpenStructure();
 
@@ -333,7 +333,7 @@ namespace Matter.Core.Commissioning
 
                             await unsecureExchange.SendAsync(pake3MessageFrame);
 
-                            var pakeFinishedMessageFrame = await unsecureExchange.ReceiveAsync();
+                            var pakeFinishedMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
                             // We now have enough to establish a secure connection
                             //
@@ -424,7 +424,6 @@ namespace Matter.Core.Commissioning
 
                             //var additionalData = memoryStream.ToArray();
 
-
                             //var messageWriter = new MatterMessageWriter();
                             //readClusterMessagePayload.Serialize(messageWriter);
                             //var payload = messageWriter.GetBytes();
@@ -437,7 +436,7 @@ namespace Matter.Core.Commissioning
 
                             await secureExchange.SendAsync(readClusterMessageFrame);
 
-                            var readClusterResponseMessageFrame = await secureExchange.ReceiveAsync();
+                            var readClusterResponseMessageFrame = await secureExchange.WaitForNextMessageAsync();
                         }
 
                         _resetEvent.Set();
