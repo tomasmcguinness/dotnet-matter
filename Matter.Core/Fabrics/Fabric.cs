@@ -11,7 +11,7 @@ namespace Matter.Core.Fabrics
     {
         public AsymmetricCipherKeyPair KeyPair { get; private set; }
 
-        public ulong RootCertificateId { get; private set; }
+        public BigInteger RootCertificateId { get; private set; }
 
         public X509Certificate RootCertificate { get; private set; }
 
@@ -27,20 +27,27 @@ namespace Matter.Core.Fabrics
         {
             var fabricId = (ulong)0;
             var rootNodeId = (ulong)0;
-            var rootCertificateId = (ulong)0;
 
-            var keyPair = CertificateAuthority.GenerateKeyPair();
+            //var idBytes = "10000000ACACACAC".ToByteArray();
+            var idBytes = "CACACACA00000001".ToByteArray();
+
+            //idBytes.Reverse();
+
+            var rootCertificateId = new BigInteger(idBytes, false);// BitConverter.ToUInt64(idBytes);
+
+            //var keyPair = CertificateAuthority.GenerateKeyPair();
+            AsymmetricCipherKeyPair keyPair = null;
             var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keyPair);
 
             // TODO I'm doing this twice; here and in GenerateRootCertificate()
-            var publicKey = keyPair.Public as ECPublicKeyParameters;
-            var rootKeyIdentifier = SHA256.HashData(publicKey.Q.GetEncoded()).AsSpan().Slice(0, 20).ToArray();
+            var publicKey = rootCertificate.GetPublicKey() as ECPublicKeyParameters;
+            var rootKeyIdentifier = SHA1.HashData(publicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
 
             return new Fabric()
             {
                 RootNodeId = rootNodeId,
                 AdminVendorId = 0xFFF1, // Default value from Matter specification 
-                KeyPair = keyPair,
+                //KeyPair = keyPair,
                 RootCertificateId = rootCertificateId,
                 RootCertificate = rootCertificate,
                 RootKeyIdentifier = rootKeyIdentifier,

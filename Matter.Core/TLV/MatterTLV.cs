@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Buffers.Binary;
+using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Matter.Core.TLV
 {
@@ -203,6 +205,19 @@ namespace Matter.Core.TLV
             // No length required.
             //
             _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddUInt64(long tagNumber, byte[] value)
+        {
+            if(value.Length != 8)
+            {
+                throw new Exception("Value must be 8 bytes long");
+            }
+            _values.Add(0x01 << 5 | 0x7);
+            _values.Add((byte)tagNumber);
+            _values.AddRange(value);
 
             return this;
         }
@@ -500,7 +515,7 @@ namespace Matter.Core.TLV
 
                         var value = BitConverter.ToUInt64(bytes, index + length);
 
-                        sb.AppendLine($"Unsigned Int (64bit) ({value})");
+                        sb.AppendLine($"Unsigned Int (64bit) ({value}|0x{value:X2})");
 
                         length += 8;
                     }
@@ -515,7 +530,7 @@ namespace Matter.Core.TLV
 
                         var value = BitConverter.ToUInt32(bytes, index + length);
 
-                        sb.AppendLine($"Unsigned Int (32bit) ({value})");
+                        sb.AppendLine($"Unsigned Int (32bit) ({value}|0x{value:X2})");
 
                         length += 4;
                     }
