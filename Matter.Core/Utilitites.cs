@@ -10,11 +10,10 @@
                              .ToArray();
         }
 
-        const long EPOCH_S = 946684800;
-
         public static uint ToEpochTime(this DateTimeOffset dt)
         {
-            return (uint)(dt.ToUnixTimeSeconds() - EPOCH_S);
+            var epochStart = 946684800; // 2000-01-01T00:00:00Z
+            return (uint)(dt.ToUnixTimeSeconds() - epochStart);
         }
     }
 }
