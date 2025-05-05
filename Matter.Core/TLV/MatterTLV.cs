@@ -79,7 +79,7 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        internal void AddUTF8String(byte tagNumber, string value)
+        public void AddUTF8String(byte tagNumber, string value)
         {
             var utf8String = Encoding.UTF8.GetBytes(value);
             var stringLength = value.Length;
@@ -88,6 +88,7 @@ namespace Matter.Core.TLV
             {
                 _values.Add(0x01 << 5 | 0x0C); // UTFString, 1-octet length
                 _values.Add(tagNumber);
+                _values.Add((byte)stringLength);
                 _values.AddRange(utf8String);
             }
             else if (stringLength < ushort.MaxValue)
@@ -104,6 +105,7 @@ namespace Matter.Core.TLV
                 _values.AddRange(BitConverter.GetBytes((uint)stringLength));
                 _values.AddRange(utf8String);
             }
+
             // We can only get an int length, so we're limited to 4-octet.
             //else if (stringLength < ulong.MaxValue)
             //{
@@ -117,8 +119,6 @@ namespace Matter.Core.TLV
                 throw new Exception("String length is too long to encode in TLV format");
             }
         }
-
-
 
         // TODO Merge all these into one method, using the length of the value to determine
         // the size of the length field.
@@ -173,6 +173,14 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddUInt8(byte value)
+        {
+            _values.Add(0x4);
+            _values.Add(value);
+
+            return this;
+        }
+
         public MatterTLV AddUInt16(long tagNumber, ushort value)
         {
             _values.Add(0x01 << 5 | 0x5);
@@ -211,7 +219,7 @@ namespace Matter.Core.TLV
 
         public MatterTLV AddUInt64(long tagNumber, byte[] value)
         {
-            if(value.Length != 8)
+            if (value.Length != 8)
             {
                 throw new Exception("Value must be 8 bytes long");
             }
@@ -222,7 +230,7 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        internal void AddBool(int tagNumber, bool v2)
+        public void AddBool(int tagNumber, bool v2)
         {
             if (v2)
             {
@@ -610,7 +618,7 @@ namespace Matter.Core.TLV
 
                         var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
 
-                        sb.AppendLine($"UTF-8 String, 1-octet length ({length:2X}) ({value})");
+                        sb.AppendLine($"UTF-8 String, 1-octet length ({stringLength}) ({value})");
 
                         length += stringLength;
                     }
@@ -630,7 +638,7 @@ namespace Matter.Core.TLV
 
                         var value = Encoding.UTF8.GetString(bytes.AsSpan().Slice(index + length, stringLength));
 
-                        sb.AppendLine($"UTF-8 String, 1-octet length ({value})");
+                        sb.AppendLine($"UTF-8 String, 1-octet length ({stringLength}) ({value})");
 
                         length += stringLength;
                     }

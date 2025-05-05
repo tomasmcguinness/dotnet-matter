@@ -1,5 +1,4 @@
-﻿using Matter.Core.Fabrics;
-using Org.BouncyCastle.Asn1;
+﻿using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
@@ -8,6 +7,8 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.X509;
 using System.Security.Cryptography;
 
@@ -25,10 +26,11 @@ namespace Matter.Core.Certificates
 
         public static X509Certificate GenerateRootCertificate(string fabricName, ulong fabricId, BigInteger rootCertificateId, AsymmetricCipherKeyPair keyPair)
         {
-            //var privateKey = keyPair.Private as ECPrivateKeyParameters;
-            //var publicKey = keyPair.Public as ECPublicKeyParameters;
+            var privateKey = keyPair.Private as ECPrivateKeyParameters;
+            var publicKey = keyPair.Public as ECPublicKeyParameters;
 
-            ////var rootCertId = new BigInteger("1");
+            // From the Example.
+            //
             //var rootCertId = new BigInteger("6479173750095827996");
 
             //var rootKeyIdentifier = SHA256.HashData(publicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
@@ -37,7 +39,7 @@ namespace Matter.Core.Certificates
             //var subjectValues = new List<string>();
 
             //subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.4"));
-            //subjectValues.Add($"{rootCertificateId:X2}");
+            //subjectValues.Add($"{Hex.ToHexString(rootCertificateId.ToByteArray())}");
 
             //X509Name subjectDN = new X509Name(subjectOids, subjectValues);
 
@@ -45,7 +47,7 @@ namespace Matter.Core.Certificates
             //var issuerValues = new List<string>();
 
             //issuerOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.4"));
-            //issuerValues.Add($"{rootCertificateId:X2}");
+            //issuerValues.Add($"{rootCertificateId:X16}");
 
             //X509Name issuerDN = new X509Name(issuerOids, issuerValues);
 
@@ -73,46 +75,17 @@ namespace Matter.Core.Certificates
             TextReader publicKeyReader = new StringReader("-----BEGIN CERTIFICATE-----\r\nMIIBnTCCAUOgAwIBAgIIWeqmMpR/VBwwCgYIKoZIzj0EAwIwIjEgMB4GCisGAQQB\r\ngqJ8AQQMEENBQ0FDQUNBMDAwMDAwMDEwHhcNMjAxMDE1MTQyMzQzWhcNNDAxMDE1\r\nMTQyMzQyWjAiMSAwHgYKKwYBBAGConwBBAwQQ0FDQUNBQ0EwMDAwMDAwMTBZMBMG\r\nByqGSM49AgEGCCqGSM49AwEHA0IABBNTo7PvHacIxJCASAFOQH1ZkM4ivE6zPppa\r\nyyWoVgPrptzYITZmpORPWsoT63Z/r6fc3dwzQR+CowtUPdHSS6ijYzBhMA8GA1Ud\r\nEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQTr4GrNzdLLtKp\r\nZJsSt6OkKH4VHTAfBgNVHSMEGDAWgBQTr4GrNzdLLtKpZJsSt6OkKH4VHTAKBggq\r\nhkjOPQQDAgNIADBFAiBFgWRGbI8ZWrwKu3xstaJ6g/QdN/jVO+7FIKvSoNoFCQIh\r\nALinwlwELjDPZNww/jNOEgAZZk5RUEkTT1eBI4RE/HUx\r\n-----END CERTIFICATE-----");
             PemReader publicPemReader = new PemReader(publicKeyReader);
             var rootCertificate = publicPemReader.ReadObject() as X509Certificate;
-
-
             return rootCertificate;
-
-
-
-            //this.RCAC = Math.Max(1, (ulong)Random.Shared.NextInt64());
-            //var commonName = fabricName;//.Truncate(64);
-            //this.IssuerCommonName = CommonName;
-            //EpochKey = ipk;
-            //X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
-            //builder.Add("2.5.4.3", fabricName, UniversalTagNumber.UTF8String);
-            //builder.Add("1.3.6.1.4.1.37244.1.4", $"{rootCertificateId:X16}", UniversalTagNumber.UTF8String);
-            //builder.Add("1.3.6.1.4.1.37244.1.5", $"{fabricId:X16}", UniversalTagNumber.UTF8String);
-
-            //ECDsa privateKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-
-            //CertificateRequest req = new CertificateRequest(builder.Build(), privateKey, HashAlgorithmName.SHA256);
-
-            //req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, true, 0, true));
-            //req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
-
-            //X509SubjectKeyIdentifierExtension subjectKeyIdentifier = new X509SubjectKeyIdentifierExtension(SHA1.HashData(new BigIntegerPoint(privateKey.ExportParameters(false).Q).ToBytes(false)), false);
-            //req.CertificateExtensions.Add(subjectKeyIdentifier);
-            //req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifier));
-
-            //return req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(10));
         }
 
         public static AsymmetricCipherKeyPair GenerateKeyPair()
         {
-            TextReader publicKeyReader = new StringReader("-----BEGIN CERTIFICATE-----\r\nMIIBnTCCAUOgAwIBAgIIWeqmMpR/VBwwCgYIKoZIzj0EAwIwIjEgMB4GCisGAQQB\r\ngqJ8AQQMEENBQ0FDQUNBMDAwMDAwMDEwHhcNMjAxMDE1MTQyMzQzWhcNNDAxMDE1\r\nMTQyMzQyWjAiMSAwHgYKKwYBBAGConwBBAwQQ0FDQUNBQ0EwMDAwMDAwMTBZMBMG\r\nByqGSM49AgEGCCqGSM49AwEHA0IABBNTo7PvHacIxJCASAFOQH1ZkM4ivE6zPppa\r\nyyWoVgPrptzYITZmpORPWsoT63Z/r6fc3dwzQR+CowtUPdHSS6ijYzBhMA8GA1Ud\r\nEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQTr4GrNzdLLtKp\r\nZJsSt6OkKH4VHTAfBgNVHSMEGDAWgBQTr4GrNzdLLtKpZJsSt6OkKH4VHTAKBggq\r\nhkjOPQQDAgNIADBFAiBFgWRGbI8ZWrwKu3xstaJ6g/QdN/jVO+7FIKvSoNoFCQIh\r\nALinwlwELjDPZNww/jNOEgAZZk5RUEkTT1eBI4RE/HUx\r\n-----END CERTIFICATE-----");
-            PemReader publicPemReader = new PemReader(publicKeyReader);
-            var publicKey = publicPemReader.ReadObject() as X509Certificate; ;// as ECPublicKeyParameters;
-
             TextReader sr = new StringReader("-----BEGIN EC PRIVATE KEY-----\r\nMHcCAQEEIH1zW+/pFqHAygL4ypiB5CZjqq+aucQzsom+JnAQdXQaoAoGCCqGSM49\r\nAwEHoUQDQgAEE1Ojs+8dpwjEkIBIAU5AfVmQziK8TrM+mlrLJahWA+um3NghNmak\r\n5E9ayhPrdn+vp9zd3DNBH4KjC1Q90dJLqA==\r\n-----END EC PRIVATE KEY-----");
             PemReader pemReader = new PemReader(sr);
-            var privateKey = pemReader.ReadObject(); // as ECPrivateKeyParameters;
+            var privateKey = pemReader.ReadObject() as AsymmetricCipherKeyPair;
 
-            // return new AsymmetricCipherKeyPair(publicKey as AsymmetricKeyParameter, privateKey as AsymmetricKeyParameter);
+            return privateKey;
+
 
             //var curve = ECNamedCurveTable.GetByName("Secp256r1");
             //var domainParams = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
@@ -125,8 +98,6 @@ namespace Matter.Core.Certificates
             //var keyPair = generator.GenerateKeyPair();
 
             //return keyPair;
-
-            return null;
         }
     }
 }

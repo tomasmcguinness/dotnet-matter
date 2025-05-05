@@ -1,10 +1,11 @@
 ﻿using Matter.Core;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
+using Org.BouncyCastle.Math;
 
 namespace Matter.Tests;
 
-public class ParsingTests
+public class TLVTests
 {
     [SetUp]
     public void Setup()
@@ -123,8 +124,78 @@ public class ParsingTests
         tlv.CloseContainer(); // Close structure.
     }
 
+    [Test]
+    public void TestCertificateEncoding()
+    {
+        var encodedNocCertificate = new MatterTLV();
+        encodedNocCertificate.AddStructure();
+
+        encodedNocCertificate.Add1OctetString(1, new BigInteger("111").ToByteArrayUnsigned()); // SerialNumber
+        encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
+
+        encodedNocCertificate.AddList(3); // Issuer
+        encodedNocCertificate.AddUInt64(20, 0);
+        encodedNocCertificate.EndContainer(); // Close List
+
+        var notBefore = new DateTimeOffset().ToEpochTime();
+        var notAfter = new DateTimeOffset().ToEpochTime();
+
+        encodedNocCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
+        encodedNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
+
+        encodedNocCertificate.AddList(6); // Subject
+        encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
+        encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
+        encodedNocCertificate.EndContainer(); // Close List
+
+        encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
+        encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
+
+        encodedNocCertificate.Add1OctetString(9, new byte[65]); // PublicKey
+
+        encodedNocCertificate.AddList(10); // Extensions
+
+        encodedNocCertificate.AddStructure(1); // Basic Constraints
+        encodedNocCertificate.AddBool(1, false); // is-ca
+        encodedNocCertificate.EndContainer(); // Close Basic Constraints
+
+        // 6.5.11.2.Key Usage Extension We want keyCertSign (0x20) and CRLSign (0x40)
+        encodedNocCertificate.AddUInt8(2, 0x6);
+
+        encodedNocCertificate.AddArray(3); // Extended Key Usage
+        encodedNocCertificate.AddUInt8(0x02);
+        encodedNocCertificate.AddUInt8(0x01);
+        encodedNocCertificate.EndContainer();
+
+        encodedNocCertificate.Add1OctetString(4, new byte[0]); // subject-key-id
+        encodedNocCertificate.Add1OctetString(5, new byte[0]); // authority-key-id
+
+        encodedNocCertificate.EndContainer(); // Close Extensions
+
+        encodedNocCertificate.Add1OctetString(11, new byte[64]);
+
+        encodedNocCertificate.EndContainer(); // Close Structure
+
+        Console.WriteLine(encodedNocCertificate);
+    }
+
+    [Test]
+    public void TestUTF8()
+    {
+        var encodedNocCertificate = new MatterTLV();
+        encodedNocCertificate.AddStructure();
+        encodedNocCertificate.AddList(6); // Subject
+        encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
+        encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
+        encodedNocCertificate.EndContainer(); // Close List
+        encodedNocCertificate.EndContainer(); // Close Structure
+
+        Console.WriteLine(encodedNocCertificate);
+    }
+
     public static byte[] StringToByteArray(string hex)
     {
+        hex = hex.Replace("-", "");
         return Enumerable.Range(0, hex.Length)
                          .Where(x => x % 2 == 0)
                          .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))

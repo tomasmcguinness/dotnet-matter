@@ -1,4 +1,6 @@
-﻿using Matter.Core.Certificates;
+﻿using Matter.Core;
+using Matter.Core.Certificates;
+using Org.BouncyCastle.Math;
 
 namespace Matter.Tests;
 
@@ -21,7 +23,8 @@ public class CertificateAuthorityTests
     {
         var fabricName = "TestFabric";
         var fabricId = (ulong)Random.Shared.NextInt64();
-        var rootCertificateId = new Org.BouncyCastle.Math.BigInteger("0");// (ulong)Random.Shared.NextInt64();
+        var rootCertificateIdBytes = "CACACACA00000001".ToByteArray();
+        var rootCertificateId = new BigInteger(rootCertificateIdBytes, false);
         var keypair = CertificateAuthority.GenerateKeyPair();
 
         var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keypair);

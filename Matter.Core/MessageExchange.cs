@@ -1,4 +1,6 @@
 ﻿using Matter.Core.Sessions;
+using Org.BouncyCastle.Utilities;
+using System.Security.Cryptography.Xml;
 using System.Threading.Channels;
 
 namespace Matter.Core
@@ -85,9 +87,11 @@ namespace Matter.Core
         {
             do
             {
+                byte[] bytes = Array.Empty<byte>();
+
                 try
                 {
-                    var bytes = await _session.ReadAsync();
+                    bytes = await _session.ReadAsync();
 
                     var messageFrame = _session.Decode(bytes);
 
@@ -126,7 +130,7 @@ namespace Matter.Core
                 catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Failed to read incoming message: {0}", ex.Message);
+                    Console.WriteLine("Failed to read incoming message: {0}: [{1}]", ex.Message, BitConverter.ToString(bytes));
                     Console.ForegroundColor = ConsoleColor.White;
                 }
 

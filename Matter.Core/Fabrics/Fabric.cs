@@ -28,15 +28,10 @@ namespace Matter.Core.Fabrics
             var fabricId = (ulong)0;
             var rootNodeId = (ulong)0;
 
-            //var idBytes = "10000000ACACACAC".ToByteArray();
-            var idBytes = "CACACACA00000001".ToByteArray();
+            var rootCertificateIdBytes = "CACACACA00000001".ToByteArray();
+            var rootCertificateId = new BigInteger(rootCertificateIdBytes, false);
 
-            //idBytes.Reverse();
-
-            var rootCertificateId = new BigInteger(idBytes, false);// BitConverter.ToUInt64(idBytes);
-
-            //var keyPair = CertificateAuthority.GenerateKeyPair();
-            AsymmetricCipherKeyPair keyPair = null;
+            var keyPair = CertificateAuthority.GenerateKeyPair();
             var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keyPair);
 
             // TODO I'm doing this twice; here and in GenerateRootCertificate()
@@ -47,7 +42,7 @@ namespace Matter.Core.Fabrics
             {
                 RootNodeId = rootNodeId,
                 AdminVendorId = 0xFFF1, // Default value from Matter specification 
-                //KeyPair = keyPair,
+                KeyPair = keyPair,
                 RootCertificateId = rootCertificateId,
                 RootCertificate = rootCertificate,
                 RootKeyIdentifier = rootKeyIdentifier,
