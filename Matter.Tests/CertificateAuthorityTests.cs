@@ -6,11 +6,6 @@ namespace Matter.Tests;
 
 public class CertificateAuthorityTests
 {
-    [SetUp]
-    public void Setup()
-    {
-    }
-
     [Test]
     public void GenerateKeyPair()
     {
@@ -30,6 +25,10 @@ public class CertificateAuthorityTests
         var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keypair);
 
         rootCertificate.Verify(keypair.Public);
+
+        var derEncodedCert = rootCertificate.GetEncoded();
+
+        File.WriteAllBytes("h:\\output.cer", derEncodedCert);
 
         Console.WriteLine(rootCertificate);
     }
