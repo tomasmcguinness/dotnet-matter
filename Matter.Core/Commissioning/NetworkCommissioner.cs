@@ -637,6 +637,26 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(_fabric.RootCertificate);
 
+                Console.WriteLine("───── DER ENCODED CERT ────");
+                Console.WriteLine(BitConverter.ToString(_fabric.RootCertificate.GetEncoded()).Replace("-", ""));
+                Console.WriteLine("───────────────────────────────────────────────────");
+                Console.WriteLine();
+
+
+
+
+
+                // The signature has to be for the DER Encoded certificate that is made up
+                // *Only* of the parts send in the TLV.
+                //
+                var writer = new AsnWriter(AsnEncodingRules.DER);
+
+                
+
+
+
+
+
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
                 // The Matter specification just wants the two parts r & s.
                 //

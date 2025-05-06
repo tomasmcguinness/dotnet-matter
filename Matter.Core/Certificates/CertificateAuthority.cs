@@ -29,11 +29,12 @@ namespace Matter.Core.Certificates
             var privateKey = keyPair.Private as ECPrivateKeyParameters;
             var publicKey = keyPair.Public as ECPublicKeyParameters;
 
+            
             // From the Example.
             //
             var rootCertId = new BigInteger("6479173750095827996");
 
-            var rootKeyIdentifier = SHA256.HashData(publicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
+            var rootKeyIdentifier = SHA1.HashData(publicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
 
             var subjectOids = new List<DerObjectIdentifier>();
             var subjectValues = new List<string>();
@@ -77,30 +78,31 @@ namespace Matter.Core.Certificates
             var exampleRootCertificate = publicPemReader.ReadObject() as X509Certificate;
 
             return exampleRootCertificate;
-
-            //return rootCertificate;
         }
 
         public static AsymmetricCipherKeyPair GenerateKeyPair()
         {
-            //TextReader sr = new StringReader("-----BEGIN EC PRIVATE KEY-----\r\nMHcCAQEEIH1zW+/pFqHAygL4ypiB5CZjqq+aucQzsom+JnAQdXQaoAoGCCqGSM49\r\nAwEHoUQDQgAEE1Ojs+8dpwjEkIBIAU5AfVmQziK8TrM+mlrLJahWA+um3NghNmak\r\n5E9ayhPrdn+vp9zd3DNBH4KjC1Q90dJLqA==\r\n-----END EC PRIVATE KEY-----");
-            //PemReader pemReader = new PemReader(sr);
-            //var examplePrivateKey = pemReader.ReadObject() as AsymmetricCipherKeyPair;
-
-            //return examplePrivateKey;
-
-
             var curve = ECNamedCurveTable.GetByName("P-256");
-            var domainParams = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
+
+            // Include the curve name in the key parameters (prime256v1)
+            //
+            var ecParam = new DerObjectIdentifier("1.2.840.10045.3.1.7");
 
             var secureRandom = new SecureRandom();
-            var keyParams = new ECKeyGenerationParameters(domainParams, secureRandom);
 
+            var keyParams = new ECKeyGenerationParameters(ecParam, secureRandom);
+            
             var generator = new ECKeyPairGenerator("ECDSA");
             generator.Init(keyParams);
             var keyPair = generator.GenerateKeyPair();
 
             return keyPair;
+
+            TextReader sr = new StringReader("-----BEGIN EC PRIVATE KEY-----\r\nMHcCAQEEIH1zW+/pFqHAygL4ypiB5CZjqq+aucQzsom+JnAQdXQaoAoGCCqGSM49\r\nAwEHoUQDQgAEE1Ojs+8dpwjEkIBIAU5AfVmQziK8TrM+mlrLJahWA+um3NghNmak\r\n5E9ayhPrdn+vp9zd3DNBH4KjC1Q90dJLqA==\r\n-----END EC PRIVATE KEY-----");
+            PemReader pemReader = new PemReader(sr);
+            var examplePrivateKey = pemReader.ReadObject() as AsymmetricCipherKeyPair;
+
+            return examplePrivateKey;
         }
     }
 }
