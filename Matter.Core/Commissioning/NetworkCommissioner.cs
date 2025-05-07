@@ -588,13 +588,14 @@ namespace Matter.Core.Commissioning
 
 
 
-                using PemWriter pemWriter = new PemWriter(new StreamWriter("h:\\output.pem"));
+                // Write the PEM out to disk
+                //using PemWriter pemWriter = new PemWriter(new StreamWriter("h:\\output.pem"));
 
-                pemWriter.WriteObject(noc);
+                //pemWriter.WriteObject(noc);
 
-                pemWriter.Writer.Flush();
+                //pemWriter.Writer.Flush();
 
-                File.WriteAllBytes("h:\\output_noc.cer", noc.GetEncoded());
+                //File.WriteAllBytes("h:\\output_noc.cer", noc.GetEncoded());
 
 
 
