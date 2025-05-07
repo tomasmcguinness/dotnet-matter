@@ -25,6 +25,12 @@ The first step for my commissioner is to take the manual pairing code, parse it 
 > [!Note]
 > The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
 
+### 07/05/2025
+
+AddNOC command is working and matter.js is creating a fabric.
+
+* https://tomasmcguinness.com/2025/05/07/building-a-net-matter-controller-commissioning-flow-certificates-pt3/
+
 ### 04/05/2025
 
 AddTrustedRootCertificate command *finally* accepted by matter.js. I'm only using the example cert from the Matter Specification, but it's working nonetheless!
