@@ -27,7 +27,7 @@ The first step for my commissioner is to take the manual pairing code, parse it 
 
 ### 07/05/2025
 
-AddNOC command is working and matter.js is creating a fabric.
+Figured out how to generated a Root CA certificate and managed to get the AddNOC command working too. THe matter.js example device is now creating a fabric!
 
 * https://tomasmcguinness.com/2025/05/07/building-a-net-matter-controller-commissioning-flow-certificates-pt3/
 
