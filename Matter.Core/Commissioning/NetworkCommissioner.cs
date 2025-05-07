@@ -11,6 +11,7 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
@@ -528,6 +529,9 @@ namespace Matter.Core.Commissioning
 
                 var peerPublicKey = certificateRequest.GetPublicKey();
 
+                var nocPublicKey = peerPublicKey as ECPublicKeyParameters;
+                var nocKeyIdentifier = SHA1.HashData(nocPublicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
+
                 // Create a self signed certificate!
                 //
                 var csrInfo = certificateRequest.GetCertificationRequestInfo();
@@ -540,51 +544,69 @@ namespace Matter.Core.Commissioning
 
                 certGenerator.SetSerialNumber(serialNumber);
 
-                // This NOC is issued by the RootCertificate.
-                //
-                certGenerator.SetIssuerDN(_fabric.RootCertificate.IssuerDN);
-
                 var subjectOids = new List<DerObjectIdentifier>();
                 var subjectValues = new List<string>();
 
                 subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.1")); // NodeId
                 subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.5")); // FabricId
-                subjectValues.Add($"2");
-                subjectValues.Add($"1");
+                subjectValues.Add($"DEDEDEDE00010001");
+                subjectValues.Add($"FAB000000000001D");
 
                 X509Name subjectDN = new X509Name(subjectOids, subjectValues);
 
                 certGenerator.SetSubjectDN(subjectDN);
-                //certGenerator.SetSubjectDN(csrInfo.Subject);
 
-                certGenerator.SetNotBefore(DateTime.UtcNow);
+                var issuerOids = new List<DerObjectIdentifier>();
+                var issuerValues = new List<string>();
+
+                issuerOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.4"));
+                issuerValues.Add($"CACACACA00000001");
+
+                X509Name issuerDN = new X509Name(issuerOids, issuerValues);
+
+                certGenerator.SetIssuerDN(issuerDN); // The root certificate is the issuer.
+
+                certGenerator.SetNotBefore(DateTime.UtcNow.AddDays(-1));
                 certGenerator.SetNotAfter(DateTime.UtcNow.AddYears(10));
 
-                certGenerator.SetPublicKey(certificateRequest.GetPublicKey());
+                certGenerator.SetPublicKey(certificateRequest.GetPublicKey() as ECPublicKeyParameters);
 
                 // Add the BasicConstraints and SubjectKeyIdentifier extensions
                 certGenerator.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
                 certGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature));
                 certGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.id_kp_clientAuth, KeyPurposeID.id_kp_serverAuth));
-                certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(new byte[0]));
+                certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(nocKeyIdentifier));
 
-                var authorityKeyIdentifier = _fabric.RootCertificate.GetExtension(X509Extensions.AuthorityKeyIdentifier).Value;
-                certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, authorityKeyIdentifier);
+                // This doesn't seems to work.
+                // var authorityKeyIdentifier = _fabric.RootCertificate.GetExtension(X509Extensions.AuthorityKeyIdentifier).Value;
+                certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(_fabric.RootKeyIdentifier));
 
                 // Create a signature factory for the specified algorithm. Sign the cert with the RootCertificate PrivateyKey
                 //
                 ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", _fabric.KeyPair.Private as ECPrivateKeyParameters);
-
-                // Sign the certificate with the specified signature algorithm
                 var noc = certGenerator.Generate(signatureFactory);
+
+
+
+                using PemWriter pemWriter = new PemWriter(new StreamWriter("h:\\output.pem"));
+
+                pemWriter.WriteObject(noc);
+
+                pemWriter.Writer.Flush();
+
+                File.WriteAllBytes("h:\\output_noc.cer", noc.GetEncoded());
+
+
 
                 noc.CheckValidity();
 
-
                 Console.WriteLine("NOC Certificate");
-                Console.WriteLine();
                 Console.WriteLine(noc);
 
+                Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
+                Console.WriteLine(BitConverter.ToString(noc.GetEncoded()).Replace("-", ""));
+                Console.WriteLine("───────────────────────────────────────────────────");
+                Console.WriteLine();
 
                 #region AddTrustedRootCertificate
 
@@ -637,24 +659,10 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(_fabric.RootCertificate);
 
-                Console.WriteLine("───── DER ENCODED CERT ────");
+                Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
                 Console.WriteLine(BitConverter.ToString(_fabric.RootCertificate.GetEncoded()).Replace("-", ""));
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine();
-
-
-
-
-
-                // The signature has to be for the DER Encoded certificate that is made up
-                // *Only* of the parts send in the TLV.
-                //
-                var writer = new AsnWriter(AsnEncodingRules.DER);
-
-                
-
-
-
 
 
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
@@ -749,6 +757,8 @@ namespace Matter.Core.Commissioning
 
                 paseExchange = paseSession.CreateExchange();
 
+
+
                 // Encode the NOC.
                 //
                 var encodedNocCertificate = new MatterTLV();
@@ -768,10 +778,18 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
 
                 encodedNocCertificate.AddList(6); // Subject
-                //encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
-                //encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
-                encodedNocCertificate.AddUInt8(17, 2); // NodeId
-                encodedNocCertificate.AddUInt8(21, 1); // FabricId
+                                                  //encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
+                                                  //encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
+
+                var nodeIdBytes = "DEDEDEDE00010001".ToByteArray();
+                var nodeId = new BigInteger(nodeIdBytes, false);
+
+                encodedNocCertificate.AddUInt64(17, nodeId.ToByteArrayUnsigned()); // NodeId
+
+                var fabricIdBytes = "FAB000000000001D".ToByteArray();
+                var fabricId = new BigInteger(fabricIdBytes, false);
+
+                encodedNocCertificate.AddUInt64(21, fabricId.ToByteArrayUnsigned()); // FabricId
                 encodedNocCertificate.EndContainer(); // Close List
 
                 encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
@@ -779,7 +797,7 @@ namespace Matter.Core.Commissioning
 
                 publicKey = noc.GetPublicKey() as ECPublicKeyParameters;
                 publicKeyBytes = publicKey!.Q.GetEncoded(false);
-                encodedNocCertificate.Add1OctetString(9, publicKeyBytes); // PublicKey
+                encodedNocCertificate.Add1OctetString(9, nocPublicKey.Q.GetEncoded(false)); // PublicKey
 
                 encodedNocCertificate.AddList(10); // Extensions
 
@@ -787,7 +805,6 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddBool(1, false); // is-ca
                 encodedNocCertificate.EndContainer(); // Close Basic Constraints
 
-                // 6.5.11.2.Key Usage Extension We want keyCertSign (0x20) and CRLSign (0x40)
                 encodedNocCertificate.AddUInt8(2, 0x1);
 
                 encodedNocCertificate.AddArray(3); // Extended Key Usage
@@ -795,7 +812,7 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt8(0x01);
                 encodedNocCertificate.EndContainer();
 
-                encodedNocCertificate.Add1OctetString(4, _fabric.RootKeyIdentifier); // subject-key-id
+                encodedNocCertificate.Add1OctetString(4, nocKeyIdentifier); // subject-key-id
                 encodedNocCertificate.Add1OctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
 
                 encodedNocCertificate.EndContainer(); // Close Extensions
@@ -808,9 +825,9 @@ namespace Matter.Core.Commissioning
 
                 // We need to convert this signature into a TLV format.
                 //
-                AsnDecoder.ReadSequence(signature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
+                AsnDecoder.ReadSequence(nocSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
 
-                source = signature.AsSpan().Slice(offset, length).ToArray();
+                source = nocSignature.AsSpan().Slice(offset, length).ToArray();
 
                 r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
                 s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
@@ -885,7 +902,6 @@ namespace Matter.Core.Commissioning
                 // TEMP: Standalone ack the last message.
                 //
                 await paseExchange.AcknowledgeMessageAsync(addNocRequestMessageFrame.MessageCounter);
-
 
                 /*
                  

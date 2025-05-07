@@ -62,4 +62,28 @@ public class CertificateAuthorityTests
 
         Console.WriteLine(BitConverter.ToString(rootCertificate.GetEncoded()).Replace("-", ""));
     }
+
+    [Test]
+    public void NOC()
+    {
+        TextReader publicKeyReader = new StringReader($"-----BEGIN CERTIFICATE-----" +
+"MIIB4DCCAYagAwIBAgIIPvz /FwK5oXowCgYIKoZIzj0EAwIwIjEgMB4GCisGAQQB" +
+"gqJ8AQMMEENBQ0FDQUNBMDAwMDAwMDMwHhcNMjAxMDE1MTQyMzQzWhcNNDAxMDE1" +
+"MTQyMzQyWjBEMSAwHgYKKwYBBAGConwBAQwQREVERURFREUwMDAxMDAwMTEgMB4G" +
+"CisGAQQBgqJ8AQUMEEZBQjAwMDAwMDAwMDAwMUQwWTATBgcqhkjOPQIBBggqhkjO" +
+"PQMBBwNCAASaKiFvs53WtvohG4NciePmr7ZsFPdYMZVPn/T3o/ARLIoNjq8pxlMp" +
+"TUju4HCKAyzKOTk8OntG8YGuoHj+rYODo4GDMIGAMAwGA1UdEwEB/wQCMAAwDgYD" +
+"VR0PAQH/BAQDAgeAMCAGA1UdJQEB/wQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATAd" +
+"BgNVHQ4EFgQUn1Wia35DA+YIg+kTv5T0+14qYWEwHwYDVR0jBBgwFoAUU1LXBZ6c" +
+"FaUIkGhihkgBop8fQdMwCgYIKoZIzj0EAwIDSAAwRQIgeVXCAmMLS6TVkSUmMi/f" +
+"KPie3+WvnA5XK9ihSqq7TRICIQC4PKF8ewX7Fkt315xSlhMxa8/ReJXksqTyQEuY" +
+"FzJxWQ==" +
+"-----END CERTIFICATE-----");
+
+        PemReader publicPemReader = new PemReader(publicKeyReader);
+        var exampleRootCertificate = publicPemReader.ReadObject() as X509Certificate;
+        Assert.That(exampleRootCertificate.Version, Is.EqualTo(3));
+
+        Console.WriteLine(BitConverter.ToString(exampleRootCertificate.GetEncoded()).Replace("-", ""));
+    }
 }
