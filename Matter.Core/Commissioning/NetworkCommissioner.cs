@@ -1,4 +1,5 @@
-﻿using Matter.Core.Cryptography;
+﻿using Matter.Core.Certificates;
+using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
@@ -542,7 +543,8 @@ namespace Matter.Core.Commissioning
                 var peerPublicKey = certificateRequest.GetPublicKey();
 
                 var nocPublicKey = peerPublicKey as ECPublicKeyParameters;
-                var nocKeyIdentifier = SHA1.HashData(nocPublicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
+                var nocPublicKeyBytes = nocPublicKey.Q.GetEncoded(false);
+                var nocKeyIdentifier = SHA1.HashData(nocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
 
                 // Create a self signed certificate!
                 //
@@ -652,9 +654,11 @@ namespace Matter.Core.Commissioning
                 encodedRootCertificate.AddUInt8(7, 1); // public-key-algorithm
                 encodedRootCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-                var publicKey = fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
-                var publicKeyBytes = publicKey!.Q.GetEncoded(false);
-                encodedRootCertificate.Add1OctetString(9, publicKeyBytes); // PublicKey
+                var rootPublicKey = fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
+                var rootPublicKeyBytes = rootPublicKey!.Q.GetEncoded(false);
+                encodedRootCertificate.Add1OctetString(9, rootPublicKeyBytes); // PublicKey
+
+                Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-",""));
 
                 encodedRootCertificate.AddList(10); // Extensions
 
@@ -805,9 +809,7 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
                 encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-                publicKey = noc.GetPublicKey() as ECPublicKeyParameters;
-                publicKeyBytes = publicKey!.Q.GetEncoded(false);
-                encodedNocCertificate.Add1OctetString(9, nocPublicKey.Q.GetEncoded(false)); // PublicKey
+                encodedNocCertificate.Add1OctetString(9, nocPublicKeyBytes); // PublicKey
 
                 encodedNocCertificate.AddList(10); // Extensions
 
@@ -925,23 +927,31 @@ namespace Matter.Core.Commissioning
                 var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                 var spake1SessionId = RandomNumberGenerator.GetBytes(16);
 
+
+                Console.WriteLine("Spake1InitiatorRandomBytes: {0}", BitConverter.ToString(spake1InitiatorRandomBytes).Replace("-", ""));
+
+
+                var ephermeralKeys = CertificateAuthority.GenerateKeyPair();
+                var ephermeralPublicKey = ephermeralKeys.Public as ECPublicKeyParameters;
+                var ephermeralKeysBytes = ephermeralPublicKey.Q.GetEncoded(false);
+
+                Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
+                Console.WriteLine("NocPublicKeyBytes: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
+                Console.WriteLine("EphermeralKeysBytes: {0}", BitConverter.ToString(ephermeralKeysBytes).Replace("-", ""));
+
                 // Destination identifier is a composite
                 //
                 MemoryStream ms = new MemoryStream();
                 BinaryWriter writer = new BinaryWriter(ms);
                 writer.Write(spake1InitiatorRandomBytes);
-                writer.Write(publicKey.Q.GetEncoded());
+                writer.Write(rootPublicKeyBytes);
                 writer.Write(fabric.FabricId.ToByteArrayUnsigned());
                 writer.Write(nodeId.ToByteArrayUnsigned());
 
                 var destinationId = ms.ToArray();
 
-                Console.WriteLine("DestinationId: {0}", BitConverter.ToString(destinationId).Replace("-", ""));
-
-                var hmac = new HMACSHA256(fabric.IPK);
+                var hmac = new HMACSHA256(fabric.OperationalIPK);
                 byte[] hashedDestinationId = hmac.ComputeHash(destinationId);
-
-                Console.WriteLine("Hashed DestinationId: {0}", BitConverter.ToString(hashedDestinationId).Replace("-", ""));
 
                 var sigma1Payload = new MatterTLV();
                 sigma1Payload.AddStructure();
@@ -949,7 +959,7 @@ namespace Matter.Core.Commissioning
                 sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
                 sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
                 sigma1Payload.Add2OctetString(3, hashedDestinationId); // destinationId
-                sigma1Payload.Add2OctetString(4, publicKeyBytes); // initiatorEphPubKey
+                sigma1Payload.Add2OctetString(4, ephermeralKeysBytes); // initiatorEphPubKey
 
                 sigma1Payload.EndContainer();
 
