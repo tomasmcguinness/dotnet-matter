@@ -11,17 +11,13 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Math;
-using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.X509;
-using Org.BouncyCastle.X509.Extension;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Text;
-using Windows.Media.Capture;
 
 namespace Matter.Core.Commissioning
 {
@@ -30,7 +26,6 @@ namespace Matter.Core.Commissioning
         private readonly int _discriminator;
         private readonly ManualResetEvent _resetEvent;
         private readonly List<ulong> _receivedAdvertisments = new();
-        private readonly Fabric _fabric = Fabric.CreateNew("NetworkFabric");
 
         public NetworkCommissioningThread(int number, ManualResetEvent resetEvent)
         {
@@ -40,13 +35,30 @@ namespace Matter.Core.Commissioning
 
         public void PerformDiscovery(object? state)
         {
-            Fabric f = state as Fabric;
+            if (state is null)
+            {
+                return;
+            }
+
+            Fabric? f = state! as Fabric;
+
+            if (f is null)
+            {
+                return;
+            }
+
             CommissionOnNetworkDevice(f).Wait();
         }
 
         private async Task CommissionOnNetworkDevice(Fabric fabric)
         {
             Console.ForegroundColor = ConsoleColor.White;
+
+            if (fabric is null)
+            {
+                Console.WriteLine("NO FABRIC!");
+                return;
+            }
 
             //var discoverer = new DnsDiscoverer();
             //await discoverer.DiscoverCommissionableNodes();
@@ -578,12 +590,12 @@ namespace Matter.Core.Commissioning
                 certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(nocKeyIdentifier));
 
                 // This doesn't seems to work.
-                // var authorityKeyIdentifier = _fabric.RootCertificate.GetExtension(X509Extensions.AuthorityKeyIdentifier).Value;
-                certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(_fabric.RootKeyIdentifier));
+                // var authorityKeyIdentifier = fabric.RootCertificate.GetExtension(X509Extensions.AuthorityKeyIdentifier).Value;
+                certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(fabric.RootKeyIdentifier));
 
                 // Create a signature factory for the specified algorithm. Sign the cert with the RootCertificate PrivateyKey
                 //
-                ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", _fabric.KeyPair.Private as ECPrivateKeyParameters);
+                ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", fabric.KeyPair.Private as ECPrivateKeyParameters);
                 var noc = certGenerator.Generate(signatureFactory);
 
 
@@ -620,27 +632,27 @@ namespace Matter.Core.Commissioning
                 var encodedRootCertificate = new MatterTLV();
                 encodedRootCertificate.AddStructure();
 
-                encodedRootCertificate.Add1OctetString(1, _fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedRootCertificate.Add1OctetString(1, fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
                 encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
 
                 encodedRootCertificate.AddList(3); // Issuer
-                encodedRootCertificate.AddUInt64(20, _fabric.RootCertificateId.ToByteArrayUnsigned());
+                encodedRootCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
                 encodedRootCertificate.EndContainer(); // Close List
 
-                var notBefore = new DateTimeOffset(_fabric.RootCertificate.NotBefore).ToEpochTime();
-                var notAfter = new DateTimeOffset(_fabric.RootCertificate.NotAfter).ToEpochTime();
+                var notBefore = new DateTimeOffset(fabric.RootCertificate.NotBefore).ToEpochTime();
+                var notAfter = new DateTimeOffset(fabric.RootCertificate.NotAfter).ToEpochTime();
 
                 encodedRootCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
                 encodedRootCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
 
                 encodedRootCertificate.AddList(6); // Subject
-                encodedRootCertificate.AddUInt64(20, _fabric.RootCertificateId.ToByteArrayUnsigned());
+                encodedRootCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
                 encodedRootCertificate.EndContainer(); // Close List
 
                 encodedRootCertificate.AddUInt8(7, 1); // public-key-algorithm
                 encodedRootCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-                var publicKey = _fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
+                var publicKey = fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
                 var publicKeyBytes = publicKey!.Q.GetEncoded(false);
                 encodedRootCertificate.Add1OctetString(9, publicKeyBytes); // PublicKey
 
@@ -653,15 +665,15 @@ namespace Matter.Core.Commissioning
                 // 6.5.11.2.Key Usage Extension We want keyCertSign (0x20) and CRLSign (0x40)
                 encodedRootCertificate.AddUInt8(2, 0x60);
 
-                encodedRootCertificate.Add1OctetString(4, _fabric.RootKeyIdentifier); // subject-key-id
-                encodedRootCertificate.Add1OctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
+                encodedRootCertificate.Add1OctetString(4, fabric.RootKeyIdentifier); // subject-key-id
+                encodedRootCertificate.Add1OctetString(5, fabric.RootKeyIdentifier); // authority-key-id
 
                 encodedRootCertificate.EndContainer(); // Close Extensions
 
-                Console.WriteLine(_fabric.RootCertificate);
+                Console.WriteLine(fabric.RootCertificate);
 
                 Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
-                Console.WriteLine(BitConverter.ToString(_fabric.RootCertificate.GetEncoded()).Replace("-", ""));
+                Console.WriteLine(BitConverter.ToString(fabric.RootCertificate.GetEncoded()).Replace("-", ""));
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine();
 
@@ -669,7 +681,7 @@ namespace Matter.Core.Commissioning
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
                 // The Matter specification just wants the two parts r & s.
                 //
-                var signature = _fabric.RootCertificate.GetSignature();
+                var signature = fabric.RootCertificate.GetSignature();
                 Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
 
                 // We need to convert this signature into a TLV format.
@@ -769,7 +781,7 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
 
                 encodedNocCertificate.AddList(3); // Issuer
-                encodedNocCertificate.AddUInt64(20, _fabric.RootCertificateId.ToByteArrayUnsigned());
+                encodedNocCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
                 encodedNocCertificate.EndContainer(); // Close List
 
                 notBefore = new DateTimeOffset(noc.NotBefore).ToEpochTime();
@@ -787,10 +799,7 @@ namespace Matter.Core.Commissioning
 
                 encodedNocCertificate.AddUInt64(17, nodeId.ToByteArrayUnsigned()); // NodeId
 
-                var fabricIdBytes = "FAB000000000001D".ToByteArray();
-                var fabricId = new BigInteger(fabricIdBytes, false);
-
-                encodedNocCertificate.AddUInt64(21, fabricId.ToByteArrayUnsigned()); // FabricId
+                encodedNocCertificate.AddUInt64(21, fabric.FabricId.ToByteArrayUnsigned()); // FabricId
                 encodedNocCertificate.EndContainer(); // Close List
 
                 encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
@@ -814,7 +823,7 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.EndContainer();
 
                 encodedNocCertificate.Add1OctetString(4, nocKeyIdentifier); // subject-key-id
-                encodedNocCertificate.Add1OctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
+                encodedNocCertificate.Add1OctetString(5, fabric.RootKeyIdentifier); // authority-key-id
 
                 encodedNocCertificate.EndContainer(); // Close Extensions
 
@@ -863,9 +872,9 @@ namespace Matter.Core.Commissioning
                 addNocRequest.AddStructure(1); // CommandFields
 
                 addNocRequest.Add2OctetString(0, encodedNocCertificate.GetBytes()); // NOCValue
-                addNocRequest.Add2OctetString(2, _fabric.IPK); // IPKValue
+                addNocRequest.Add2OctetString(2, fabric.IPK); // IPKValue
                 addNocRequest.AddUInt64(3, 2); // CaseAdminSubject - In this case a NodeId of 2.
-                addNocRequest.AddUInt16(4, _fabric.AdminVendorId); // AdminVendorId
+                addNocRequest.AddUInt16(4, fabric.AdminVendorId); // AdminVendorId
 
                 addNocRequest.EndContainer(); // Close the CommandFields
 
@@ -900,13 +909,14 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(addNocResponseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
-                // TEMP: Standalone ack the last message.
-                //
-                await paseExchange.AcknowledgeMessageAsync(addNocRequestMessageFrame.MessageCounter);
 
-                /*
-                 
-                // Create a new Exchange as we're now exchanging SecureChannel protocol messages
+                // Perform Step 13 of the Commissioning Flow.
+                //
+                Console.WriteLine("┌──────────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 20 - Security Setup With CASE |");
+                Console.WriteLine("└──────────────────────────────────────────────────┘");
+
+                // Create a new Exchange
                 //
                 paseExchange = paseSession.CreateExchange();
 
@@ -914,26 +924,24 @@ namespace Matter.Core.Commissioning
                 //
                 var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                 var spake1SessionId = RandomNumberGenerator.GetBytes(16);
-                var keyPair = CertificateAuthority.GenerateKeyPair();
-                var fabricId = new BigInteger("123");
-                var nodeId = (long)66;
-
-                var publicKey = keyPair.Public as ECPublicKeyParameters;
-                var publicKeyBytes = publicKey.Q.GetEncoded(false).ToArray();
 
                 // Destination identifier is a composite
                 //
                 MemoryStream ms = new MemoryStream();
                 BinaryWriter writer = new BinaryWriter(ms);
                 writer.Write(spake1InitiatorRandomBytes);
-                writer.Write(spake1SessionId);
-                writer.Write(fabricId.ToByteArray());
-                writer.Write(nodeId);
+                writer.Write(publicKey.Q.GetEncoded());
+                writer.Write(fabric.FabricId.ToByteArrayUnsigned());
+                writer.Write(nodeId.ToByteArrayUnsigned());
 
                 var destinationId = ms.ToArray();
 
-                var hmac = new HMACSHA256(_fabric.IPK);
+                Console.WriteLine("DestinationId: {0}", BitConverter.ToString(destinationId).Replace("-", ""));
+
+                var hmac = new HMACSHA256(fabric.IPK);
                 byte[] hashedDestinationId = hmac.ComputeHash(destinationId);
+
+                Console.WriteLine("Hashed DestinationId: {0}", BitConverter.ToString(hashedDestinationId).Replace("-", ""));
 
                 var sigma1Payload = new MatterTLV();
                 sigma1Payload.AddStructure();
@@ -949,9 +957,7 @@ namespace Matter.Core.Commissioning
 
                 sigma1MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
-                // Table 14. Protocol IDs for the Matter Standard Vendor ID
                 sigma1MessagePayload.ProtocolId = 0x00;
-                // From Table 18. Secure Channel Protocol Opcodes
                 sigma1MessagePayload.ProtocolOpCode = 0x30; // Sigma1
 
                 var sigma1MessageFrame = new MessageFrame(sigma1MessagePayload);
@@ -962,8 +968,9 @@ namespace Matter.Core.Commissioning
 
                 await paseExchange.SendAsync(sigma1MessageFrame);
 
-                var sigma2MessageFrame = await paseExchange.ReceiveAsync();
-                */
+                var sigma2MessageFrame = await paseExchange.WaitForNextMessageAsync();
+
+
 
                 await Task.Delay(5000);
             }

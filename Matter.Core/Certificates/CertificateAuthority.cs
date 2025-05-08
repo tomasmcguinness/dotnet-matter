@@ -24,7 +24,7 @@ namespace Matter.Core.Certificates
                              .ToArray();
         }
 
-        public static X509Certificate GenerateRootCertificate(string fabricName, ulong fabricId, BigInteger rootCertificateId, AsymmetricCipherKeyPair keyPair)
+        public static X509Certificate GenerateRootCertificate(BigInteger rootCertificateId, AsymmetricCipherKeyPair keyPair)
         {
             var privateKey = keyPair.Private as ECPrivateKeyParameters;
             var publicKey = keyPair.Public as ECPublicKeyParameters;
