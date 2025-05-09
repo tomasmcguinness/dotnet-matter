@@ -1,6 +1,4 @@
 ﻿using Matter.Core.Sessions;
-using Org.BouncyCastle.Utilities;
-using System.Security.Cryptography.Xml;
 using System.Threading.Channels;
 
 namespace Matter.Core
@@ -49,17 +47,24 @@ namespace Matter.Core
             message.MessagePayload.ExchangeID = _exchangeId;
             message.MessageCounter = GlobalCounter.Counter;
 
+            uint? messageToAck = null;
+
             // Do we have any unacknowledged messages?
             // If yes, add the acknowledgement to this outgoing message.
             //
             if (_acknowledgedMessageCounter != _receivedMessageCounter)
             {
-                Console.WriteLine("Including Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
+                //Console.WriteLine("Including Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
 
                 _acknowledgedMessageCounter = _receivedMessageCounter;
 
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
                 message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
+                messageToAck = _acknowledgedMessageCounter;
+            }
+            else
+            {
+                //Console.WriteLine("No unacknowledged message");
             }
 
             if (_session.UseMRP)
@@ -69,7 +74,7 @@ namespace Matter.Core
 
             // TODO Turn the ProtocolId and OpCode into nice names.
             //
-            Console.WriteLine(">>> Sending Message {0} | {1:X2} | {2:X2}", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode);
+            Console.WriteLine("\n>>> Sending Message | Id: {0} | {1:X2} | {2:X2} | Ack: {3}\n{4}\n", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode, messageToAck, message.MessagePayload.ApplicationPayload);
 
             var bytes = _session.Encode(message);
 
@@ -95,7 +100,7 @@ namespace Matter.Core
 
                     var messageFrame = _session.Decode(bytes);
 
-                    Console.WriteLine("<<< Received Message {0} | {1:X2} | {2:X2}", messageFrame.MessageCounter, messageFrame.MessagePayload.ProtocolId, messageFrame.MessagePayload.ProtocolOpCode);
+                    Console.WriteLine("\n<<< Received Message {0} | {1:X2} | {2:X2}\n\n{3}\n", messageFrame.MessageCounter, messageFrame.MessagePayload.ProtocolId, messageFrame.MessagePayload.ProtocolOpCode, messageFrame.MessagePayload.ApplicationPayload);
 
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)

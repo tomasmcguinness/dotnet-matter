@@ -19,6 +19,7 @@ using Org.BouncyCastle.X509;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Text;
+using System.Windows.Forms;
 
 namespace Matter.Core.Commissioning
 {
@@ -80,7 +81,6 @@ namespace Matter.Core.Commissioning
 
                 // Perform the PASE exchange.
                 //
-
                 Console.WriteLine("┌───────────────────────────────────────────────┐");
                 Console.WriteLine("| COMMISSIONING STEP 6 - Send PBKDFParamRequest |");
                 Console.WriteLine("└───────────────────────────────────────────────┘");
@@ -497,8 +497,6 @@ namespace Matter.Core.Commissioning
                 csrRequestMessageFrame.SecurityFlags = 0x00;
                 csrRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(csrRequestMessageFrame.MessagePayload.ApplicationPayload.ToString());
-
                 await paseExchange.SendAsync(csrRequestMessageFrame);
 
                 Console.WriteLine("┌───────────────────────────────────────────────┐");
@@ -506,8 +504,6 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("└───────────────────────────────────────────────┘");
 
                 var csrResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
-
-                Console.WriteLine(csrResponseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
                 var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
 
@@ -600,8 +596,6 @@ namespace Matter.Core.Commissioning
                 ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", fabric.KeyPair.Private as ECPrivateKeyParameters);
                 var noc = certGenerator.Generate(signatureFactory);
 
-
-
                 // Write the PEM out to disk
                 //using PemWriter pemWriter = new PemWriter(new StreamWriter("h:\\output.pem"));
 
@@ -610,8 +604,6 @@ namespace Matter.Core.Commissioning
                 //pemWriter.Writer.Flush();
 
                 //File.WriteAllBytes("h:\\output_noc.cer", noc.GetEncoded());
-
-
 
                 noc.CheckValidity();
 
@@ -622,6 +614,8 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine(BitConverter.ToString(noc.GetEncoded()).Replace("-", ""));
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine();
+
+                await paseExchange.AcknowledgeMessageAsync(csrResponseMessageFrame.MessageCounter);
 
                 #region AddTrustedRootCertificate
 
@@ -658,7 +652,7 @@ namespace Matter.Core.Commissioning
                 var rootPublicKeyBytes = rootPublicKey!.Q.GetEncoded(false);
                 encodedRootCertificate.Add1OctetString(9, rootPublicKeyBytes); // PublicKey
 
-                Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-",""));
+                Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
 
                 encodedRootCertificate.AddList(10); // Extensions
 
@@ -680,7 +674,6 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine(BitConverter.ToString(fabric.RootCertificate.GetEncoded()).Replace("-", ""));
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine();
-
 
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
                 // The Matter specification just wants the two parts r & s.
@@ -756,15 +749,15 @@ namespace Matter.Core.Commissioning
                 addTrustedRootCerticateRequestMessageFrame.SecurityFlags = 0x00;
                 addTrustedRootCerticateRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(addTrustedRootCerticateRequestMessageFrame.MessagePayload.ApplicationPayload);
-
                 await paseExchange.SendAsync(addTrustedRootCerticateRequestMessageFrame);
 
                 var addTrustedRootCertificateResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(addTrustedRootCertificateResponseMessageFrame.MessagePayload.ApplicationPayload);
+                await paseExchange.AcknowledgeMessageAsync(addTrustedRootCerticateRequestMessageFrame.MessageCounter);
 
                 #endregion
+
+                #region COMMISSIONING STEP 13 - AddNocRequest
 
                 // Perform Step 13 of the Commissioning Flow.
                 //
@@ -773,8 +766,6 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("└───────────────────────────────────────┘");
 
                 paseExchange = paseSession.CreateExchange();
-
-
 
                 // Encode the NOC.
                 //
@@ -903,14 +894,15 @@ namespace Matter.Core.Commissioning
                 addNocRequestMessageFrame.SecurityFlags = 0x00;
                 addNocRequestMessageFrame.SourceNodeID = 0x00;
 
-                Console.WriteLine(addNocRequestMessageFrame.MessagePayload.ApplicationPayload.ToString());
-
                 await paseExchange.SendAsync(addNocRequestMessageFrame);
 
                 var addNocResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(addNocResponseMessageFrame.MessagePayload.ApplicationPayload.ToString());
+                // Acknowledge the response.
+                //
+                await paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter);
 
+                #endregion
 
                 // Perform Step 13 of the Commissioning Flow.
                 //
@@ -927,17 +919,15 @@ namespace Matter.Core.Commissioning
                 var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                 var spake1SessionId = RandomNumberGenerator.GetBytes(16);
 
-
-                Console.WriteLine("Spake1InitiatorRandomBytes: {0}", BitConverter.ToString(spake1InitiatorRandomBytes).Replace("-", ""));
-
+                //Console.WriteLine("Spake1InitiatorRandomBytes: {0}", BitConverter.ToString(spake1InitiatorRandomBytes).Replace("-", ""));
 
                 var ephermeralKeys = CertificateAuthority.GenerateKeyPair();
                 var ephermeralPublicKey = ephermeralKeys.Public as ECPublicKeyParameters;
                 var ephermeralKeysBytes = ephermeralPublicKey.Q.GetEncoded(false);
 
-                Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
-                Console.WriteLine("NocPublicKeyBytes: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
-                Console.WriteLine("EphermeralKeysBytes: {0}", BitConverter.ToString(ephermeralKeysBytes).Replace("-", ""));
+                //Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
+                //Console.WriteLine("NocPublicKeyBytes: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
+                //Console.WriteLine("EphermeralKeysBytes: {0}", BitConverter.ToString(ephermeralKeysBytes).Replace("-", ""));
 
                 // Destination identifier is a composite
                 //
@@ -980,7 +970,17 @@ namespace Matter.Core.Commissioning
 
                 var sigma2MessageFrame = await paseExchange.WaitForNextMessageAsync();
 
+                sigma2MessageFrame.MessagePayload.ApplicationPayload.OpenStructure();
 
+                var sigma2ResponderRandom = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetOctetString(1);
+                var sigma2ResponderSessionId = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetUnsignedInt16(2);
+                var sigma2ResponderEphPublicKey = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetOctetString(3);
+                var sigma2EncryptedPayload = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetOctetString(4);
+
+
+
+
+                await paseExchange.AcknowledgeMessageAsync(sigma2MessageFrame.MessageCounter);
 
                 await Task.Delay(5000);
             }

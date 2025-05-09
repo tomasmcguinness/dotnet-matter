@@ -16,6 +16,9 @@
             return (uint)(dt.ToUnixTimeSeconds() - epochStart);
         }
 
-        
+        public static string DebugInfo(this MessageFrame message)
+        {
+            return string.Format("<<< Receiving Message {0} | {1:X2} | {2:X2}\n\n{3}", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode, message.MessagePayload.ApplicationPayload);
+        }
     }
 }

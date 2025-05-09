@@ -37,7 +37,7 @@
 
         public MessageFrameParts(byte[] messageFrameBytes)
         {
-            Console.WriteLine("┌────────────────────────────────────────────────────────────────────────────────\n│ {0}\n└──────────────────────────────────────────────────────────────────────────────", BitConverter.ToString(messageFrameBytes));
+            //Console.WriteLine("┌────────────────────────────────────────────────────────────────────────────────\n│ {0}\n└──────────────────────────────────────────────────────────────────────────────", BitConverter.ToString(messageFrameBytes));
 
             var messageFlags = (MessageFlags)messageFrameBytes[0];
             var SessionID = BitConverter.ToUInt16(messageFrameBytes, 1);
