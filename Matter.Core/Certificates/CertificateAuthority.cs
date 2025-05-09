@@ -64,7 +64,7 @@ namespace Matter.Core.Certificates
             certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(rootKeyIdentifier));
 
             ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", privateKey);
-
+            
             var rootCertificate = certificateGenerator.Generate(signatureFactory);
 
             return rootCertificate;

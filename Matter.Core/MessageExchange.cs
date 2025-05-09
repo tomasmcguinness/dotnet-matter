@@ -72,9 +72,7 @@ namespace Matter.Core
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
             }
 
-            // TODO Turn the ProtocolId and OpCode into nice names.
-            //
-            Console.WriteLine("\n>>> Sending Message | Id: {0} | {1:X2} | {2:X2} | Ack: {3}\n{4}\n", message.MessageCounter, message.MessagePayload.ProtocolId, message.MessagePayload.ProtocolOpCode, messageToAck, message.MessagePayload.ApplicationPayload);
+            Console.WriteLine("\n>>> Sending Message {0}", message.DebugInfo());
 
             var bytes = _session.Encode(message);
 
@@ -100,7 +98,7 @@ namespace Matter.Core
 
                     var messageFrame = _session.Decode(bytes);
 
-                    Console.WriteLine("\n<<< Received Message {0} | {1:X2} | {2:X2}\n\n{3}\n", messageFrame.MessageCounter, messageFrame.MessagePayload.ProtocolId, messageFrame.MessagePayload.ProtocolOpCode, messageFrame.MessagePayload.ApplicationPayload);
+                    Console.WriteLine("\n<<< Received Message {0}", messageFrame.DebugInfo());
 
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
@@ -114,16 +112,16 @@ namespace Matter.Core
                     _receivedMessageCounter = messageFrame.MessageCounter;
                     //}
 
-                    if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
-                    {
-                        Console.WriteLine("Received Message acknowledges outgoing message {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
-                    }
+                    //if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
+                    //{
+                    //    Console.WriteLine("Received Message acknowledges outgoing message {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
+                    //}
 
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     //
                     if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
                     {
-                        Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
+                        //Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
                         return;
                     }
 

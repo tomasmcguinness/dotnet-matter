@@ -82,34 +82,34 @@ namespace Matter.Core.TLV
             var utf8String = Encoding.UTF8.GetBytes(value);
             var stringLength = value.Length;
 
-            if (stringLength < 255)
+            if (stringLength <= 255)
             {
                 _values.Add(0x01 << 5 | 0x0C); // UTFString, 1-octet length
                 _values.Add(tagNumber);
                 _values.Add((byte)stringLength);
                 _values.AddRange(utf8String);
             }
-            else if (stringLength < ushort.MaxValue)
+            else if (stringLength <= ushort.MaxValue)
             {
                 _values.Add(0x01 << 5 | 0x0D); // UTFString, 2-octet length
                 _values.Add(tagNumber);
                 _values.AddRange(BitConverter.GetBytes((ushort)stringLength));
                 _values.AddRange(utf8String);
             }
-            else if (stringLength < uint.MaxValue)
+            else //if (stringLength < uint.MaxValue)
             {
                 _values.Add(0x01 << 5 | 0x0E); // UTFString, 4-octet length
                 _values.Add(tagNumber);
                 _values.AddRange(BitConverter.GetBytes((uint)stringLength));
                 _values.AddRange(utf8String);
             }
-            else
-            {
-                _values.Add(0x01 << 5 | 0x0F); // UTFString, 8-octet length
-                _values.Add(tagNumber);
-                _values.AddRange(BitConverter.GetBytes((ulong)stringLength));
-                _values.AddRange(utf8String);
-            }
+            //else
+            //{
+            //    _values.Add(0x01 << 5 | 0x0F); // UTFString, 8-octet length
+            //    _values.Add(tagNumber);
+            //    _values.AddRange(BitConverter.GetBytes((ulong)stringLength));
+            //    _values.AddRange(utf8String);
+            //}
 
             return this;
         }
@@ -118,7 +118,7 @@ namespace Matter.Core.TLV
         {
             var valueLength = value.Length;
 
-            if (valueLength < 255)
+            if (valueLength <= 255)
             {
                 // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
                 // to produce a context tag for Octet String, 1 bytes length
@@ -129,7 +129,7 @@ namespace Matter.Core.TLV
                 _values.Add((byte)value.Length);
                 _values.AddRange(value);
             }
-            else if (valueLength < ushort.MaxValue)
+            else if (valueLength <= ushort.MaxValue)
             {
                 // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 11
                 // to produce a context tag for Octet String, 2 bytes length
@@ -140,7 +140,7 @@ namespace Matter.Core.TLV
                 _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
                 _values.AddRange(value);
             }
-            else if (valueLength < uint.MaxValue)
+            else //if (valueLength < uint.MaxValue)
             {
                 // This is a context type 1, shifted 5 bits and then OR'd with 12
                 // to produce a context tag for Octet String, 4 bytes
@@ -151,13 +151,13 @@ namespace Matter.Core.TLV
                 _values.AddRange(BitConverter.GetBytes((uint)value.Length));
                 _values.AddRange(value);
             }
-            else
-            {
-                _values.Add(0x01 << 5 | 0x13); // Octet String, 4-octet length
-                _values.Add(tagNumber);
-                _values.AddRange(BitConverter.GetBytes((ulong)value.Length));
-                _values.AddRange(value);
-            }
+            //else
+            //{
+            //    _values.Add(0x01 << 5 | 0x13); // Octet String, 4-octet length
+            //    _values.Add(tagNumber);
+            //    _values.AddRange(BitConverter.GetBytes((ulong)value.Length));
+            //    _values.AddRange(value);
+            //}
 
             return this;
         }

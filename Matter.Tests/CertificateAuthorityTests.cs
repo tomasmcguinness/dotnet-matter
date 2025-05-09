@@ -47,6 +47,7 @@ public class CertificateAuthorityTests
         TextReader publicKeyReader = new StringReader("-----BEGIN CERTIFICATE-----\r\nMIIBnTCCAUOgAwIBAgIIWeqmMpR/VBwwCgYIKoZIzj0EAwIwIjEgMB4GCisGAQQB\r\ngqJ8AQQMEENBQ0FDQUNBMDAwMDAwMDEwHhcNMjAxMDE1MTQyMzQzWhcNNDAxMDE1\r\nMTQyMzQyWjAiMSAwHgYKKwYBBAGConwBBAwQQ0FDQUNBQ0EwMDAwMDAwMTBZMBMG\r\nByqGSM49AgEGCCqGSM49AwEHA0IABBNTo7PvHacIxJCASAFOQH1ZkM4ivE6zPppa\r\nyyWoVgPrptzYITZmpORPWsoT63Z/r6fc3dwzQR+CowtUPdHSS6ijYzBhMA8GA1Ud\r\nEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQTr4GrNzdLLtKp\r\nZJsSt6OkKH4VHTAfBgNVHSMEGDAWgBQTr4GrNzdLLtKpZJsSt6OkKH4VHTAKBggq\r\nhkjOPQQDAgNIADBFAiBFgWRGbI8ZWrwKu3xstaJ6g/QdN/jVO+7FIKvSoNoFCQIh\r\nALinwlwELjDPZNww/jNOEgAZZk5RUEkTT1eBI4RE/HUx\r\n-----END CERTIFICATE-----");
         PemReader publicPemReader = new PemReader(publicKeyReader);
         var exampleRootCertificate = publicPemReader.ReadObject() as X509Certificate;
+
         Assert.That(exampleRootCertificate.Version, Is.EqualTo(3));
 
         Console.WriteLine(BitConverter.ToString(exampleRootCertificate.GetEncoded()).Replace("-", ""));

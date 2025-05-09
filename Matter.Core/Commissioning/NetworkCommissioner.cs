@@ -27,6 +27,7 @@ using System.Security.Policy;
 using System.Text;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace Matter.Core.Commissioning
 {
@@ -604,6 +605,7 @@ namespace Matter.Core.Commissioning
                 var noc = certGenerator.Generate(signatureFactory);
 
                 // Write the PEM out to disk
+                //
                 //using PemWriter pemWriter = new PemWriter(new StreamWriter("h:\\output.pem"));
 
                 //pemWriter.WriteObject(noc);
@@ -998,10 +1000,6 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine("SharedSecret: {0}", BitConverter.ToString(sharedSecret.ToByteArrayUnsigned()).Replace("-", ""));
 
-
-                Console.WriteLine(format: "sigma1Bytes: {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
-                Console.WriteLine(format: "sigma1Bytes: {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
-
                 // Generate the shared key using HKDF
                 //
                 // Step 1 - the TranscriptHash
@@ -1051,29 +1049,78 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine(TBEData2);
 
                 // Build sigma-3-tbsdata
+                //
+                var sigma3tbs = new MatterTLV();
 
-                var TBSData3 = new MatterTLV();
+                sigma3tbs.AddStructure();
 
-                TBSData3.AddStructure();
+                sigma3tbs.AddOctetString(1, fabric.RootCertificate.GetEncoded()); // initiatorNOC
+                sigma3tbs.AddOctetString(3, ephermeralPublicKeysBytes); // initiatorEphPubKey
+                sigma3tbs.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
 
-                TBSData3.AddOctetString(1, nocPayload.GetBytes()); // initiatorNOC
-                TBSData3.AddOctetString(3, ephermeralPublicKeysBytes); // initiatorEphPubKey
-                TBSData3.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
+                sigma3tbs.EndContainer();
 
-                TBSData3.EndContainer();
+                var sigma3tbsBytes = sigma3tbs.GetBytes();
 
-                var TBSData3Bytes = TBSData3.GetBytes();
+                Console.WriteLine("sigma3tbsBytes {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
+
+                // Sign this tbsData3.
+                //
+                var signer = SignerUtilities.GetSigner("SHA-1withECDSA");
+                signer.Init(true, fabric.KeyPair.Private as ECPrivateKeyParameters);
+                signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
+                byte[] sigma3tbsSignature = signer.GenerateSignature();
+
+                var sigma3tbe = new MatterTLV();
+                sigma3tbe.AddStructure();
+                sigma3tbe.AddOctetString(1, fabric.RootCertificate.GetEncoded());
+                sigma3tbe.AddOctetString(3, sigma3tbsSignature);
+                sigma3tbe.EndContainer();
+
+                var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
+
+                Console.WriteLine("sigma1Bytes {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
+                Console.WriteLine("sigma2Bytes {0}", BitConverter.ToString(sigma2Payload.GetBytes()).Replace("-", ""));
+
+                var sigma3tbeTranscriptHash = SHA256.HashData(sigma1Payload.GetBytes().Concat(sigma2Payload.GetBytes()).ToArray());
+
+                Console.WriteLine("S3 TranscriptHash {0}", BitConverter.ToString(sigma3tbeTranscriptHash).Replace("-", ""));
+
+                ms = new MemoryStream();
+                saltWriter = new BinaryWriter(ms);
+                saltWriter.Write(fabric.OperationalIPK);
+                saltWriter.Write(sigma3tbeTranscriptHash);
+
+                salt = ms.ToArray();
+
+                Console.WriteLine("S3 Salt {0}", BitConverter.ToString(salt).Replace("-", ""));
+
+                // Step 3 - Compute the S3K (the shared key)
+                //
+                info = Encoding.ASCII.GetBytes("Sigma3");
+
+                hkdf = new HkdfBytesGenerator(new Sha256Digest());
+                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), salt, info));
+
+                var sigma3Key = new byte[16];
+                hkdf.GenerateBytes(sigma3Key, 0, 16);
+
+                Console.WriteLine(format: "S3K: {0}", BitConverter.ToString(sigma3Key).Replace("-", ""));
 
                 nonce = Encoding.ASCII.GetBytes("NCASE_Sigma3N");
 
-                keyParamAead = new AeadParameters(new KeyParameter(sigma2Key), macSize, nonce);
+                keyParamAead = new AeadParameters(new KeyParameter(sigma3Key), macSize, nonce);
                 cipherMode = new CcmBlockCipher(cipher);
                 cipherMode.Init(true, keyParamAead);
 
-                outputSize = cipherMode.GetOutputSize(TBSData3Bytes.Length);
+                var sigma3tbeBytes = sigma3tbe.GetBytes();
+
+                outputSize = cipherMode.GetOutputSize(sigma3tbeBytes.Length);
                 var encryptedData = new byte[outputSize];
-                result = cipherMode.ProcessBytes(TBSData3Bytes, 0, TBSData3Bytes.Length, encryptedData, 0);
+                result = cipherMode.ProcessBytes(sigma3tbeBytes, 0, sigma3tbeBytes.Length, encryptedData, 0);
                 cipherMode.DoFinal(encryptedData, result);
+
+                Console.WriteLine(format: "S3 Encrypted: {0}", BitConverter.ToString(encryptedData).Replace("-", ""));
 
                 var sigma3 = new MatterTLV();
                 sigma3.AddStructure();
@@ -1085,7 +1132,7 @@ namespace Matter.Core.Commissioning
                 sigma3MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
                 sigma3MessagePayload.ProtocolId = 0x00;
-                sigma3MessagePayload.ProtocolOpCode = 0x32; // Sigma1
+                sigma3MessagePayload.ProtocolOpCode = 0x32; // Sigma3
 
                 var sigma3MessageFrame = new MessageFrame(sigma3MessagePayload);
 
@@ -1097,6 +1144,17 @@ namespace Matter.Core.Commissioning
 
                 var successMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
+                if (MessageFrame.IsStatusReport(successMessageFrame))
+                {
+                    Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
+                }
+
+                await paseExchange.AcknowledgeMessageAsync(successMessageFrame.MessageCounter);
+
+                if (MessageFrame.IsStatusReport(successMessageFrame))
+                {
+                    Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
+                }
 
                 await Task.Delay(5000);
             }

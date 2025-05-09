@@ -12,7 +12,7 @@ namespace Matter.Core
         {
             MessagePayload = messagePayload;
         }
-       
+
         public MessageFlags MessageFlags { get; set; }
 
         public ushort SessionID { get; set; }
@@ -28,6 +28,12 @@ namespace Matter.Core
         public MessagePayload MessagePayload { get; set; }
 
         public byte[]? EncryptedMessagePayload { get; set; }
+
+        internal static bool IsStatusReport(MessageFrame successMessageFrame)
+        {
+            return successMessageFrame.MessagePayload.ProtocolId == 0x00 &&
+                   successMessageFrame.MessagePayload.ProtocolOpCode == 0x40;
+        }
 
         public override string ToString()
         {
