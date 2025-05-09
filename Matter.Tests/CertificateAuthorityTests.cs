@@ -24,7 +24,7 @@ public class CertificateAuthorityTests
         var rootCertificateId = new BigInteger(rootCertificateIdBytes, false);
         var keypair = CertificateAuthority.GenerateKeyPair();
 
-        var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keypair);
+        var rootCertificate = CertificateAuthority.GenerateRootCertificate(rootCertificateId, keypair);
 
         rootCertificate.Verify(keypair.Public);
 
@@ -58,7 +58,7 @@ public class CertificateAuthorityTests
 
         var keypair = CertificateAuthority.GenerateKeyPair();
 
-        var rootCertificate = CertificateAuthority.GenerateRootCertificate(fabricName, fabricId, rootCertificateId, keypair);
+        var rootCertificate = CertificateAuthority.GenerateRootCertificate(rootCertificateId, keypair);
 
         Console.WriteLine(BitConverter.ToString(rootCertificate.GetEncoded()).Replace("-", ""));
     }

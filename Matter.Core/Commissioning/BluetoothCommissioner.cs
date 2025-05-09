@@ -113,7 +113,7 @@ namespace Matter.Core.Commissioning
                             // We need a control octet, the tag, the length and the value.
                             //
                             var initiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
-                            PBKDFParamRequest.Add4OctetString(1, initiatorRandomBytes);
+                            PBKDFParamRequest.AddOctetString(1, initiatorRandomBytes);
                             PBKDFParamRequest.AddUInt16(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
                             PBKDFParamRequest.AddUInt16(3, 0);
                             PBKDFParamRequest.AddBool(4, false);
@@ -227,7 +227,7 @@ namespace Matter.Core.Commissioning
 
                             Console.WriteLine("X: {0}", BitConverter.ToString(byteString));
 
-                            pake1.Add1OctetString(1, byteString);
+                            pake1.AddOctetString(1, byteString);
 
                             pake1.EndContainer();
 
@@ -299,7 +299,7 @@ namespace Matter.Core.Commissioning
                             var pake3 = new MatterTLV();
                             pake3.AddStructure();
 
-                            pake3.Add1OctetString(1, hAY);
+                            pake3.AddOctetString(1, hAY);
 
                             pake3.EndContainer();
 

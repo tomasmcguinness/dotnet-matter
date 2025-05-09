@@ -130,7 +130,7 @@ public class TLVTests
         var encodedNocCertificate = new MatterTLV();
         encodedNocCertificate.AddStructure();
 
-        encodedNocCertificate.Add1OctetString(1, new BigInteger("111").ToByteArrayUnsigned()); // SerialNumber
+        encodedNocCertificate.AddOctetString(1, new BigInteger("111").ToByteArrayUnsigned()); // SerialNumber
         encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
 
         encodedNocCertificate.AddList(3); // Issuer
@@ -151,7 +151,7 @@ public class TLVTests
         encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
         encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-        encodedNocCertificate.Add1OctetString(9, new byte[65]); // PublicKey
+        encodedNocCertificate.AddOctetString(9, new byte[65]); // PublicKey
 
         encodedNocCertificate.AddList(10); // Extensions
 
@@ -167,12 +167,12 @@ public class TLVTests
         encodedNocCertificate.AddUInt8(0x01);
         encodedNocCertificate.EndContainer();
 
-        encodedNocCertificate.Add1OctetString(4, new byte[0]); // subject-key-id
-        encodedNocCertificate.Add1OctetString(5, new byte[0]); // authority-key-id
+        encodedNocCertificate.AddOctetString(4, new byte[0]); // subject-key-id
+        encodedNocCertificate.AddOctetString(5, new byte[0]); // authority-key-id
 
         encodedNocCertificate.EndContainer(); // Close Extensions
 
-        encodedNocCertificate.Add1OctetString(11, new byte[64]);
+        encodedNocCertificate.AddOctetString(11, new byte[64]);
 
         encodedNocCertificate.EndContainer(); // Close Structure
 

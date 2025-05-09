@@ -98,7 +98,7 @@ namespace Matter.Core.Commissioning
                 // We need a control octet, the tag, the length and the value.
                 //
                 var initiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
-                PBKDFParamRequest.Add4OctetString(1, initiatorRandomBytes);
+                PBKDFParamRequest.AddOctetString(1, initiatorRandomBytes);
                 PBKDFParamRequest.AddUInt16(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
                 PBKDFParamRequest.AddUInt16(3, 0);
                 PBKDFParamRequest.AddBool(4, false);
@@ -213,7 +213,7 @@ namespace Matter.Core.Commissioning
 
                 //Console.WriteLine("X: {0}", BitConverter.ToString(byteString));
 
-                pake1.Add1OctetString(1, byteString);
+                pake1.AddOctetString(1, byteString);
 
                 pake1.EndContainer();
 
@@ -281,7 +281,7 @@ namespace Matter.Core.Commissioning
                 var pake3 = new MatterTLV();
                 pake3.AddStructure();
 
-                pake3.Add1OctetString(1, hAY);
+                pake3.AddOctetString(1, hAY);
 
                 pake3.EndContainer();
 
@@ -478,7 +478,7 @@ namespace Matter.Core.Commissioning
 
                 var csrNonceBytes = RandomNumberGenerator.GetBytes(32);
 
-                csrRequest.Add4OctetString(0, csrNonceBytes); // CSRNonce
+                csrRequest.AddOctetString(0, csrNonceBytes); // CSRNonce
 
                 csrRequest.EndContainer(); // Close the CommandFields
 
@@ -635,7 +635,7 @@ namespace Matter.Core.Commissioning
                 var encodedRootCertificate = new MatterTLV();
                 encodedRootCertificate.AddStructure();
 
-                encodedRootCertificate.Add1OctetString(1, fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedRootCertificate.AddOctetString(1, fabric.RootCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
                 encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
 
                 encodedRootCertificate.AddList(3); // Issuer
@@ -657,7 +657,7 @@ namespace Matter.Core.Commissioning
 
                 var rootPublicKey = fabric.RootCertificate.GetPublicKey() as ECPublicKeyParameters;
                 var rootPublicKeyBytes = rootPublicKey!.Q.GetEncoded(false);
-                encodedRootCertificate.Add1OctetString(9, rootPublicKeyBytes); // PublicKey
+                encodedRootCertificate.AddOctetString(9, rootPublicKeyBytes); // PublicKey
 
                 Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
 
@@ -670,8 +670,8 @@ namespace Matter.Core.Commissioning
                 // 6.5.11.2.Key Usage Extension We want keyCertSign (0x20) and CRLSign (0x40)
                 encodedRootCertificate.AddUInt8(2, 0x60);
 
-                encodedRootCertificate.Add1OctetString(4, fabric.RootKeyIdentifier); // subject-key-id
-                encodedRootCertificate.Add1OctetString(5, fabric.RootKeyIdentifier); // authority-key-id
+                encodedRootCertificate.AddOctetString(4, fabric.RootKeyIdentifier); // subject-key-id
+                encodedRootCertificate.AddOctetString(5, fabric.RootKeyIdentifier); // authority-key-id
 
                 encodedRootCertificate.EndContainer(); // Close Extensions
 
@@ -699,7 +699,7 @@ namespace Matter.Core.Commissioning
 
                 var sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
 
-                encodedRootCertificate.Add1OctetString(11, sig);
+                encodedRootCertificate.AddOctetString(11, sig);
 
                 encodedRootCertificate.EndContainer(); // Close Structure
 
@@ -726,7 +726,7 @@ namespace Matter.Core.Commissioning
 
                 addTrustedRootCertificateRequest.AddStructure(1); // CommandFields
 
-                addTrustedRootCertificateRequest.Add2OctetString(0, encodedRootCertificate.GetBytes()); // RootCertificate
+                addTrustedRootCertificateRequest.AddOctetString(0, encodedRootCertificate.GetBytes()); // RootCertificate
 
                 addTrustedRootCertificateRequest.EndContainer(); // Close the CommandFields
 
@@ -779,7 +779,7 @@ namespace Matter.Core.Commissioning
                 var encodedNocCertificate = new MatterTLV();
                 encodedNocCertificate.AddStructure();
 
-                encodedNocCertificate.Add1OctetString(1, noc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedNocCertificate.AddOctetString(1, noc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
                 encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
 
                 encodedNocCertificate.AddList(3); // Issuer
@@ -807,7 +807,7 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
                 encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-                encodedNocCertificate.Add1OctetString(9, nocPublicKeyBytes); // PublicKey
+                encodedNocCertificate.AddOctetString(9, nocPublicKeyBytes); // PublicKey
 
                 encodedNocCertificate.AddList(10); // Extensions
 
@@ -822,8 +822,8 @@ namespace Matter.Core.Commissioning
                 encodedNocCertificate.AddUInt8(0x01);
                 encodedNocCertificate.EndContainer();
 
-                encodedNocCertificate.Add1OctetString(4, nocKeyIdentifier); // subject-key-id
-                encodedNocCertificate.Add1OctetString(5, fabric.RootKeyIdentifier); // authority-key-id
+                encodedNocCertificate.AddOctetString(4, nocKeyIdentifier); // subject-key-id
+                encodedNocCertificate.AddOctetString(5, fabric.RootKeyIdentifier); // authority-key-id
 
                 encodedNocCertificate.EndContainer(); // Close Extensions
 
@@ -844,7 +844,7 @@ namespace Matter.Core.Commissioning
 
                 sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
 
-                encodedNocCertificate.Add1OctetString(11, sig);
+                encodedNocCertificate.AddOctetString(11, sig);
 
                 encodedNocCertificate.EndContainer(); // Close Structure
 
@@ -871,8 +871,8 @@ namespace Matter.Core.Commissioning
 
                 addNocRequest.AddStructure(1); // CommandFields
 
-                addNocRequest.Add2OctetString(0, encodedNocCertificate.GetBytes()); // NOCValue
-                addNocRequest.Add2OctetString(2, fabric.IPK); // IPKValue
+                addNocRequest.AddOctetString(0, encodedNocCertificate.GetBytes()); // NOCValue
+                addNocRequest.AddOctetString(2, fabric.IPK); // IPKValue
                 addNocRequest.AddUInt64(3, 2); // CaseAdminSubject - In this case a NodeId of 2.
                 addNocRequest.AddUInt16(4, fabric.AdminVendorId); // AdminVendorId
 
@@ -954,10 +954,10 @@ namespace Matter.Core.Commissioning
                 var sigma1Payload = new MatterTLV();
                 sigma1Payload.AddStructure();
 
-                sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
+                sigma1Payload.AddOctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
                 sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
-                sigma1Payload.Add2OctetString(3, hashedDestinationId); // destinationId
-                sigma1Payload.Add2OctetString(4, ephermeralPublicKeysBytes); // initiatorEphPubKey
+                sigma1Payload.AddOctetString(3, hashedDestinationId); // destinationId
+                sigma1Payload.AddOctetString(4, ephermeralPublicKeysBytes); // initiatorEphPubKey
 
                 sigma1Payload.EndContainer();
 
@@ -1030,6 +1030,8 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(format: "S2K: {0}", BitConverter.ToString(sigma2Key).Replace("-", ""));
 
+                // Step 4 - Use the S2K to decrypt the payload
+                // 
                 var nonce = Encoding.ASCII.GetBytes("NCASE_Sigma2N");
 
                 IBlockCipher cipher = new AesEngine();
@@ -1037,7 +1039,7 @@ namespace Matter.Core.Commissioning
 
                 AeadParameters keyParamAead = new AeadParameters(new KeyParameter(sigma2Key), macSize, nonce);
                 CcmBlockCipher cipherMode = new CcmBlockCipher(cipher);
-                cipherMode.Init(true, keyParamAead);
+                cipherMode.Init(false, keyParamAead);
 
                 var outputSize = cipherMode.GetOutputSize(sigma2EncryptedPayload.Length);
                 var plainTextData = new byte[outputSize];
@@ -1048,19 +1050,52 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(TBEData2);
 
-                // Step 4 - Use the S2K to decrypt the payload
-                // 
-                //IAeadCipherService provider = CryptoServicesRegistrar.CreateService(key);
-                //IAeadCipherBuilder<IParameters<Algorithm>> decryptBuilder =
-                //            provider.CreateAeadDecryptorBuilder(FipsAes.Ccm.WithIV(ExValues.sampleIVcounter));
-                //ICipher noPaddedDecryptor = decryptBuilder.BuildCipher(new MemoryInputStream(cipherTextData));
+                // Build sigma-3-tbsdata
 
-                //byte[] plainTextData;
-                //using (Stream decrypterStream = noPaddedDecryptor.Stream)
-                //{ plainTextData = Streams.ReadAll(decrypterStream); }
+                var TBSData3 = new MatterTLV();
 
-                //return plainTextData
+                TBSData3.AddStructure();
 
+                TBSData3.AddOctetString(1, nocPayload.GetBytes()); // initiatorNOC
+                TBSData3.AddOctetString(3, ephermeralPublicKeysBytes); // initiatorEphPubKey
+                TBSData3.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
+
+                TBSData3.EndContainer();
+
+                var TBSData3Bytes = TBSData3.GetBytes();
+
+                nonce = Encoding.ASCII.GetBytes("NCASE_Sigma3N");
+
+                keyParamAead = new AeadParameters(new KeyParameter(sigma2Key), macSize, nonce);
+                cipherMode = new CcmBlockCipher(cipher);
+                cipherMode.Init(true, keyParamAead);
+
+                outputSize = cipherMode.GetOutputSize(TBSData3Bytes.Length);
+                var encryptedData = new byte[outputSize];
+                result = cipherMode.ProcessBytes(TBSData3Bytes, 0, TBSData3Bytes.Length, encryptedData, 0);
+                cipherMode.DoFinal(encryptedData, result);
+
+                var sigma3 = new MatterTLV();
+                sigma3.AddStructure();
+                sigma3.AddOctetString(1, encryptedData); // sigma3EncryptedPayload
+                sigma3.EndContainer();
+
+                var sigma3MessagePayload = new MessagePayload(sigma3);
+
+                sigma3MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                sigma3MessagePayload.ProtocolId = 0x00;
+                sigma3MessagePayload.ProtocolOpCode = 0x32; // Sigma1
+
+                var sigma3MessageFrame = new MessageFrame(sigma3MessagePayload);
+
+                sigma3MessageFrame.MessageFlags |= MessageFlags.S;
+                sigma3MessageFrame.SecurityFlags = 0x00;
+                sigma3MessageFrame.SourceNodeID = 0x00;
+
+                await paseExchange.SendAsync(sigma3MessageFrame);
+
+                var successMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
 
                 await Task.Delay(5000);

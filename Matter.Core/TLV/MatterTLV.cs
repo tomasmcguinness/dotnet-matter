@@ -1,6 +1,4 @@
-﻿using System.Buffers.Binary;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Text;
 
 namespace Matter.Core.TLV
 {
@@ -79,7 +77,7 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public void AddUTF8String(byte tagNumber, string value)
+        public MatterTLV AddUTF8String(byte tagNumber, string value)
         {
             var utf8String = Encoding.UTF8.GetBytes(value);
             var stringLength = value.Length;
@@ -105,59 +103,62 @@ namespace Matter.Core.TLV
                 _values.AddRange(BitConverter.GetBytes((uint)stringLength));
                 _values.AddRange(utf8String);
             }
-
-            // We can only get an int length, so we're limited to 4-octet.
-            //else if (stringLength < ulong.MaxValue)
-            //{
-            //    _values.Add(0x01 << 5 | 0x0F); // UTFString, 4-octet length
-            //    _values.Add(tagNumber);
-            //    _values.AddRange(BitConverter.GetBytes((ulong)stringLength));
-            //    _values.AddRange(utf8String);
-            //}
             else
             {
-                throw new Exception("String length is too long to encode in TLV format");
+                _values.Add(0x01 << 5 | 0x0F); // UTFString, 8-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((ulong)stringLength));
+                _values.AddRange(utf8String);
             }
-        }
 
-        // TODO Merge all these into one method, using the length of the value to determine
-        // the size of the length field.
-        public MatterTLV Add1OctetString(byte tagNumber, byte[] value)
-        {
-            // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
-            // to produce a context tag for Octet String, 1 bytes length
-            // 00110000
-            //
-            _values.Add(0x01 << 5 | 0x10); // Octet String, 1-octet length
-            _values.Add(tagNumber);
-            _values.Add((byte)value.Length);
-            _values.AddRange(value);
             return this;
         }
 
-        public MatterTLV Add2OctetString(byte tagNumber, byte[] value)
+        public MatterTLV AddOctetString(byte tagNumber, byte[] value)
         {
-            // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 11
-            // to produce a context tag for Octet String, 2 bytes length
-            // 00110001
-            //
-            _values.Add(0x01 << 5 | 0x11); // Octet String, 2-octet length
-            _values.Add(tagNumber);
-            _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
-            _values.AddRange(value);
-            return this;
-        }
+            var valueLength = value.Length;
 
-        public MatterTLV Add4OctetString(byte tagNumber, byte[] value)
-        {
-            // This is a context type 1, shifted 5 bits and then OR'd with 12
-            // to produce a context tag for Octet String, 4 bytes
-            // 00110010
-            //
-            _values.Add(0x01 << 5 | 0x12); // Octet String, 4-octet length
-            _values.Add(tagNumber);
-            _values.AddRange(BitConverter.GetBytes((uint)value.Length));
-            _values.AddRange(value);
+            if (valueLength < 255)
+            {
+                // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 10
+                // to produce a context tag for Octet String, 1 bytes length
+                // 00110000
+                //
+                _values.Add(0x01 << 5 | 0x10); // Octet String, 1-octet length
+                _values.Add(tagNumber);
+                _values.Add((byte)value.Length);
+                _values.AddRange(value);
+            }
+            else if (valueLength < ushort.MaxValue)
+            {
+                // This is a Context-Specific Tag, shifted 5 bits and then OR'd with 11
+                // to produce a context tag for Octet String, 2 bytes length
+                // 00110001
+                //
+                _values.Add(0x01 << 5 | 0x11); // Octet String, 2-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((ushort)value.Length));
+                _values.AddRange(value);
+            }
+            else if (valueLength < uint.MaxValue)
+            {
+                // This is a context type 1, shifted 5 bits and then OR'd with 12
+                // to produce a context tag for Octet String, 4 bytes
+                // 00110010
+                //
+                _values.Add(0x01 << 5 | 0x12); // Octet String, 4-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((uint)value.Length));
+                _values.AddRange(value);
+            }
+            else
+            {
+                _values.Add(0x01 << 5 | 0x13); // Octet String, 4-octet length
+                _values.Add(tagNumber);
+                _values.AddRange(BitConverter.GetBytes((ulong)value.Length));
+                _values.AddRange(value);
+            }
+
             return this;
         }
 
@@ -166,7 +167,7 @@ namespace Matter.Core.TLV
             _values.Add(0x01 << 5 | 0x4);
             _values.Add((byte)tagNumber);
 
-            // No length required.
+            // No length required
             //
             _values.Add(value);
 
@@ -230,7 +231,7 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public void AddBool(int tagNumber, bool v2)
+        public MatterTLV AddBool(int tagNumber, bool v2)
         {
             if (v2)
             {
@@ -242,6 +243,8 @@ namespace Matter.Core.TLV
             }
 
             _values.Add((byte)tagNumber);
+
+            return this;
         }
 
         internal void Serialize(MatterMessageWriter writer)
