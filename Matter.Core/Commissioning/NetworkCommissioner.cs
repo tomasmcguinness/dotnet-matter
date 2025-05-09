@@ -21,6 +21,7 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
+using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Policy;
@@ -1054,7 +1055,7 @@ namespace Matter.Core.Commissioning
 
                 sigma3tbs.AddStructure();
 
-                sigma3tbs.AddOctetString(1, fabric.RootCertificate.GetEncoded()); // initiatorNOC
+                sigma3tbs.AddOctetString(1, encodedRootCertificate.GetBytes()); // initiatorNOC
                 sigma3tbs.AddOctetString(3, ephermeralPublicKeysBytes); // initiatorEphPubKey
                 sigma3tbs.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
 
@@ -1066,15 +1067,30 @@ namespace Matter.Core.Commissioning
 
                 // Sign this tbsData3.
                 //
-                var signer = SignerUtilities.GetSigner("SHA-1withECDSA");
+                var signer = SignerUtilities.GetSigner("SHA256WITHECDSA");
                 signer.Init(true, fabric.KeyPair.Private as ECPrivateKeyParameters);
                 signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
                 byte[] sigma3tbsSignature = signer.GenerateSignature();
 
+                Console.WriteLine("sigma3tbsSignature {0}", BitConverter.ToString(sigma3tbsSignature).Replace("-", ""));
+
+                // Convert from an ASN.1 signature to a TLV encoded one.
+                //
+                AsnDecoder.ReadSequence(sigma3tbsSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
+
+                source = sigma3tbsSignature.AsSpan().Slice(offset, length).ToArray();
+
+                r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
+                s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
+
+                sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+
+                // Construct the sigma-3-tbe payload, which will be encrypted.
+                //
                 var sigma3tbe = new MatterTLV();
                 sigma3tbe.AddStructure();
-                sigma3tbe.AddOctetString(1, fabric.RootCertificate.GetEncoded());
-                sigma3tbe.AddOctetString(3, sigma3tbsSignature);
+                sigma3tbe.AddOctetString(1, encodedRootCertificate.GetBytes());
+                sigma3tbe.AddOctetString(3, sig);
                 sigma3tbe.EndContainer();
 
                 var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
