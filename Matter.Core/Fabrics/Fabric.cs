@@ -62,7 +62,7 @@ namespace Matter.Core.Fabrics
             var compressedFabricIdentifier = new byte[8];
             hkdf.GenerateBytes(compressedFabricIdentifier, 0, 8);
 
-            // Generate the OperationalGroupKey using HKDF.
+            // Generate the OperationalGroupKey(OperationalIPK) using HKDF.
             //
             byte[] groupKey = Encoding.ASCII.GetBytes("GroupKey v1.0");
             hkdf.Init(new HkdfParameters(ipk, compressedFabricIdentifier, groupKey));

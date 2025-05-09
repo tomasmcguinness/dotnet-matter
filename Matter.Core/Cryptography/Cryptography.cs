@@ -25,12 +25,14 @@ namespace Matter.Core.Cryptography
             var passcodeBytes = new byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(passcodeBytes, passcode);
 
-            X9ECParameters ecP = ECNamedCurveTable.GetByName("Secp256r1");
+            X9ECParameters curve = ECNamedCurveTable.GetByName("Secp256r1");
 
-            if (ecP == null)
-                throw new Exception("unknown curve name: Secp256r1");
+            if (curve == null)
+            {
+                throw new Exception("Couldn't find a curve");
+            }
 
-            var domainParameters = new ECDomainParameters(ecP.Curve, ecP.G, ecP.N, ecP.H, ecP.GetSeed());
+            var domainParameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
 
             var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BYTES);
 
@@ -39,22 +41,14 @@ namespace Matter.Core.Cryptography
             var w0s = new BigInteger(1, pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray(), true);
             var w1s = new BigInteger(1, pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray(), true);
 
-            //var w0String = BitConverter.ToString(w0s.ToByteArray()).Replace("-", "");
-            //var w1String = BitConverter.ToString(w1s.ToByteArray()).Replace("-", "");
-
-            var w0 = w0s.Mod(ecP.N);
-            var w1 = w1s.Mod(ecP.N);
-
-            //w0String = BitConverter.ToString(w0.ToByteArray()).Replace("-", "");
-            //w1String = BitConverter.ToString(w1.ToByteArray()).Replace("-", "");
-
-            //BigInteger x = new BigInteger(1, Convert.FromHexString("8b0f3f383905cf3a3bb955ef8fb62e24849dd349a05ca79aafb18041d30cbdb6"), true);
+            var w0 = w0s.Mod(curve.N);
+            var w1 = w1s.Mod(curve.N);
 
             BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
 
-            M = ecP.Curve.DecodePoint(Convert.FromHexString("02886e2f97ace46e55ba9dd7242579f2993b64e16ef3dcab95afd497333d8fa12f"));
+            M = curve.Curve.DecodePoint(Convert.FromHexString("02886e2f97ace46e55ba9dd7242579f2993b64e16ef3dcab95afd497333d8fa12f"));
 
-            var X = ecP.G.Multiply(x).Add(M.Multiply(w0)).Normalize();
+            var X = curve.G.Multiply(x).Add(M.Multiply(w0)).Normalize();
 
             return (w0, w1, x, X);
         }
@@ -79,8 +73,8 @@ namespace Matter.Core.Cryptography
             var Zs = BitConverter.ToString(Z.GetEncoded(false)).Replace("-", "");
             var Vs = BitConverter.ToString(V.GetEncoded(false)).Replace("-", "");
 
-            Console.WriteLine("Z: {0}", Zs);
-            Console.WriteLine("V: {0}", Vs);
+            //Console.WriteLine("Z: {0}", Zs);
+            //Console.WriteLine("V: {0}", Vs);
 
             return ComputeSecretAndVerifiers(contextHash, w0, X, Y, Z, V);
         }

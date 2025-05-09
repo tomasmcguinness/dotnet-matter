@@ -8,7 +8,6 @@ using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.X509;
 using System.Security.Cryptography;
 
@@ -29,7 +28,7 @@ namespace Matter.Core.Certificates
             var privateKey = keyPair.Private as ECPrivateKeyParameters;
             var publicKey = keyPair.Public as ECPublicKeyParameters;
 
-            
+
             // From the Example.
             //
             var rootCertId = new BigInteger("6479173750095827996");
@@ -71,7 +70,8 @@ namespace Matter.Core.Certificates
             return rootCertificate;
 
 
-
+            // This is the Example Root certificate in the Matter Specification
+            //
 
             TextReader publicKeyReader = new StringReader("-----BEGIN CERTIFICATE-----\r\nMIIBnTCCAUOgAwIBAgIIWeqmMpR/VBwwCgYIKoZIzj0EAwIwIjEgMB4GCisGAQQB\r\ngqJ8AQQMEENBQ0FDQUNBMDAwMDAwMDEwHhcNMjAxMDE1MTQyMzQzWhcNNDAxMDE1\r\nMTQyMzQyWjAiMSAwHgYKKwYBBAGConwBBAwQQ0FDQUNBQ0EwMDAwMDAwMTBZMBMG\r\nByqGSM49AgEGCCqGSM49AwEHA0IABBNTo7PvHacIxJCASAFOQH1ZkM4ivE6zPppa\r\nyyWoVgPrptzYITZmpORPWsoT63Z/r6fc3dwzQR+CowtUPdHSS6ijYzBhMA8GA1Ud\r\nEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQTr4GrNzdLLtKp\r\nZJsSt6OkKH4VHTAfBgNVHSMEGDAWgBQTr4GrNzdLLtKpZJsSt6OkKH4VHTAKBggq\r\nhkjOPQQDAgNIADBFAiBFgWRGbI8ZWrwKu3xstaJ6g/QdN/jVO+7FIKvSoNoFCQIh\r\nALinwlwELjDPZNww/jNOEgAZZk5RUEkTT1eBI4RE/HUx\r\n-----END CERTIFICATE-----");
             PemReader publicPemReader = new PemReader(publicKeyReader);
@@ -91,13 +91,15 @@ namespace Matter.Core.Certificates
             var secureRandom = new SecureRandom();
 
             var keyParams = new ECKeyGenerationParameters(ecParam, secureRandom);
-            
+
             var generator = new ECKeyPairGenerator("ECDSA");
             generator.Init(keyParams);
             var keyPair = generator.GenerateKeyPair();
 
             return keyPair;
 
+            // This is the Example Root certificate Private Key in the Matter Specification
+            //
             TextReader sr = new StringReader("-----BEGIN EC PRIVATE KEY-----\r\nMHcCAQEEIH1zW+/pFqHAygL4ypiB5CZjqq+aucQzsom+JnAQdXQaoAoGCCqGSM49\r\nAwEHoUQDQgAEE1Ojs+8dpwjEkIBIAU5AfVmQziK8TrM+mlrLJahWA+um3NghNmak\r\n5E9ayhPrdn+vp9zd3DNBH4KjC1Q90dJLqA==\r\n-----END EC PRIVATE KEY-----");
             PemReader pemReader = new PemReader(sr);
             var examplePrivateKey = pemReader.ReadObject() as AsymmetricCipherKeyPair;

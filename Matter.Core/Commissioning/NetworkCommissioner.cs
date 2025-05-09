@@ -5,6 +5,7 @@ using Matter.Core.Sessions;
 using Matter.Core.TLV;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
@@ -12,14 +13,17 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
+using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
+using System.Windows.Input;
 
 namespace Matter.Core.Commissioning
 {
@@ -204,7 +208,7 @@ namespace Matter.Core.Commissioning
 
                 //Console.WriteLine("Iterations: {0}\nSalt: {1}\nSalt Base64: {2}\npA: {3}", iterations, Encoding.ASCII.GetString(salt), Convert.ToBase64String(salt), Convert.ToBase64String(byteString));
 
-                Console.WriteLine("X: {0}", BitConverter.ToString(byteString));
+                //Console.WriteLine("X: {0}", BitConverter.ToString(byteString));
 
                 pake1.Add1OctetString(1, byteString);
 
@@ -923,7 +927,8 @@ namespace Matter.Core.Commissioning
 
                 var ephermeralKeys = CertificateAuthority.GenerateKeyPair();
                 var ephermeralPublicKey = ephermeralKeys.Public as ECPublicKeyParameters;
-                var ephermeralKeysBytes = ephermeralPublicKey.Q.GetEncoded(false);
+                var ephermeralPrivateKey = ephermeralKeys.Private as ECPrivateKeyParameters;
+                var ephermeralPublicKeysBytes = ephermeralPublicKey.Q.GetEncoded(false);
 
                 //Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
                 //Console.WriteLine("NocPublicKeyBytes: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
@@ -949,7 +954,7 @@ namespace Matter.Core.Commissioning
                 sigma1Payload.Add4OctetString(1, spake1InitiatorRandomBytes); // initiatorRandom
                 sigma1Payload.AddUInt16(2, BitConverter.ToUInt16(spake1SessionId)); // initiatorSessionId 
                 sigma1Payload.Add2OctetString(3, hashedDestinationId); // destinationId
-                sigma1Payload.Add2OctetString(4, ephermeralKeysBytes); // initiatorEphPubKey
+                sigma1Payload.Add2OctetString(4, ephermeralPublicKeysBytes); // initiatorEphPubKey
 
                 sigma1Payload.EndContainer();
 
@@ -977,10 +982,65 @@ namespace Matter.Core.Commissioning
                 var sigma2ResponderEphPublicKey = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetOctetString(3);
                 var sigma2EncryptedPayload = sigma2MessageFrame.MessagePayload.ApplicationPayload.GetOctetString(4);
 
+                // Generate the shared secret.
+                //
+                var sigmaKeyAgreement = AgreementUtilities.GetBasicAgreement("ECDH");
+                sigmaKeyAgreement.Init(ephermeralPrivateKey);
+
+                var curve = ECNamedCurveTable.GetByName("P-256");
+                var ecPoint = curve.Curve.DecodePoint(sigma2ResponderEphPublicKey);
+                var ephPublicKey = new ECPublicKeyParameters(ecPoint, new ECDomainParameters(curve));
+
+                var sharedSecret = sigmaKeyAgreement.CalculateAgreement(ephPublicKey);
+
+                Console.WriteLine("SharedSecret: {0}", BitConverter.ToString(sharedSecret.ToByteArrayUnsigned()).Replace("-", ""));
 
 
+                Console.WriteLine(format: "sigma1Bytes: {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
+                Console.WriteLine(format: "sigma1Bytes: {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
 
-                await paseExchange.AcknowledgeMessageAsync(sigma2MessageFrame.MessageCounter);
+                // Generate the shared key using HKDF
+                //
+                // Step 1 - the TranscriptHash
+                //
+                var transcriptHash = SHA256.HashData(sigma1Payload.GetBytes());
+
+                // Step 2 - SALT
+                ms = new MemoryStream();
+                BinaryWriter saltWriter = new BinaryWriter(ms);
+                saltWriter.Write(fabric.OperationalIPK);
+                saltWriter.Write(sigma2ResponderRandom);
+                saltWriter.Write(sigma2ResponderEphPublicKey);
+                saltWriter.Write(transcriptHash);
+
+                salt = ms.ToArray();
+
+                // Step 3 - Compute the S2K (the shared key)
+                //
+                info = Encoding.ASCII.GetBytes("Sigma2");
+
+                hkdf = new HkdfBytesGenerator(new Sha256Digest());
+                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), salt, info));
+
+                var sigma2Key = new byte[16];
+                hkdf.GenerateBytes(sigma2Key, 0, 16);
+
+                Console.WriteLine(format: "S2K: {0}", BitConverter.ToString(sigma2Key).Replace("-", ""));
+
+                // Step 4 - Use the S2K to decrypt the payload
+                // 
+                //IAeadCipherService provider = CryptoServicesRegistrar.CreateService(key);
+                //IAeadCipherBuilder<IParameters<Algorithm>> decryptBuilder =
+                //            provider.CreateAeadDecryptorBuilder(FipsAes.Ccm.WithIV(ExValues.sampleIVcounter));
+                //ICipher noPaddedDecryptor = decryptBuilder.BuildCipher(new MemoryInputStream(cipherTextData));
+
+                //byte[] plainTextData;
+                //using (Stream decrypterStream = noPaddedDecryptor.Stream)
+                //{ plainTextData = Streams.ReadAll(decrypterStream); }
+
+                //return plainTextData
+
+
 
                 await Task.Delay(5000);
             }
