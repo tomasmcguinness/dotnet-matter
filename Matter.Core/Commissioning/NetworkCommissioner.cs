@@ -8,7 +8,9 @@ using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
@@ -21,6 +23,7 @@ using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
+using System.Security.Policy;
 using System.Text;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -1026,6 +1029,24 @@ namespace Matter.Core.Commissioning
                 hkdf.GenerateBytes(sigma2Key, 0, 16);
 
                 Console.WriteLine(format: "S2K: {0}", BitConverter.ToString(sigma2Key).Replace("-", ""));
+
+                var nonce = Encoding.ASCII.GetBytes("NCASE_Sigma2N");
+
+                IBlockCipher cipher = new AesEngine();
+                int macSize = 8 * cipher.GetBlockSize();
+
+                AeadParameters keyParamAead = new AeadParameters(new KeyParameter(sigma2Key), macSize, nonce);
+                CcmBlockCipher cipherMode = new CcmBlockCipher(cipher);
+                cipherMode.Init(true, keyParamAead);
+
+                var outputSize = cipherMode.GetOutputSize(sigma2EncryptedPayload.Length);
+                var plainTextData = new byte[outputSize];
+                var result = cipherMode.ProcessBytes(sigma2EncryptedPayload, 0, sigma2EncryptedPayload.Length, plainTextData, 0);
+                cipherMode.DoFinal(plainTextData, result);
+
+                var TBEData2 = new MatterTLV(plainTextData);
+
+                Console.WriteLine(TBEData2);
 
                 // Step 4 - Use the S2K to decrypt the payload
                 // 
