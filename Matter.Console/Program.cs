@@ -14,5 +14,3 @@ var commissioner = new NetworkCommissioner();
 commissioner.CommissionDevice(3840);
 
 Console.WriteLine("Commissioning done (timed out or worked)");
-
-Console.ReadKey();

@@ -362,6 +362,7 @@ namespace Matter.Core.Commissioning
                 var paseExchange = paseSession.CreateExchange();
 
                 #region Vendor Name Command
+
                 /*
                 // To test the secure session, fetch the Vendor Name using the Interaction Model.
                 // ReadRequest payload.
@@ -547,9 +548,9 @@ namespace Matter.Core.Commissioning
 
                 var peerPublicKey = certificateRequest.GetPublicKey();
 
-                var nocPublicKey = peerPublicKey as ECPublicKeyParameters;
-                var nocPublicKeyBytes = nocPublicKey.Q.GetEncoded(false);
-                var nocKeyIdentifier = SHA1.HashData(nocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
+                var peerNocPublicKey = peerPublicKey as ECPublicKeyParameters;
+                var peerNocPublicKeyBytes = peerNocPublicKey.Q.GetEncoded(false);
+                var peerNocKeyIdentifier = SHA1.HashData(peerNocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
 
                 // Create a self signed certificate!
                 //
@@ -594,16 +595,13 @@ namespace Matter.Core.Commissioning
                 certGenerator.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
                 certGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature));
                 certGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.id_kp_clientAuth, KeyPurposeID.id_kp_serverAuth));
-                certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(nocKeyIdentifier));
-
-                // This doesn't seems to work.
-                // var authorityKeyIdentifier = fabric.RootCertificate.GetExtension(X509Extensions.AuthorityKeyIdentifier).Value;
+                certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(peerNocKeyIdentifier));
                 certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(fabric.RootKeyIdentifier));
 
                 // Create a signature factory for the specified algorithm. Sign the cert with the RootCertificate PrivateyKey
                 //
                 ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", fabric.KeyPair.Private as ECPrivateKeyParameters);
-                var noc = certGenerator.Generate(signatureFactory);
+                var peerNoc = certGenerator.Generate(signatureFactory);
 
                 // Write the PEM out to disk
                 //
@@ -615,13 +613,13 @@ namespace Matter.Core.Commissioning
 
                 //File.WriteAllBytes("h:\\output_noc.cer", noc.GetEncoded());
 
-                noc.CheckValidity();
+                peerNoc.CheckValidity();
 
                 Console.WriteLine("NOC Certificate");
-                Console.WriteLine(noc);
+                Console.WriteLine(peerNoc);
 
                 Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
-                Console.WriteLine(BitConverter.ToString(noc.GetEncoded()).Replace("-", ""));
+                Console.WriteLine(BitConverter.ToString(peerNoc.GetEncoded()).Replace("-", ""));
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine();
 
@@ -652,6 +650,7 @@ namespace Matter.Core.Commissioning
                 encodedRootCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
 
                 encodedRootCertificate.AddList(6); // Subject
+                //encodedRootCertificate.AddUInt64(17, fabric.RootNodeId.ToByteArrayUnsigned());
                 encodedRootCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
                 encodedRootCertificate.EndContainer(); // Close List
 
@@ -662,7 +661,7 @@ namespace Matter.Core.Commissioning
                 var rootPublicKeyBytes = rootPublicKey!.Q.GetEncoded(false);
                 encodedRootCertificate.AddOctetString(9, rootPublicKeyBytes); // PublicKey
 
-                Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
+                //Console.WriteLine("Root Certificate PublicKey: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
 
                 encodedRootCertificate.AddList(10); // Extensions
 
@@ -700,9 +699,9 @@ namespace Matter.Core.Commissioning
                 var r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out var bytesConsumed);
                 var s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
 
-                var sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+                var encodedRootCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
 
-                encodedRootCertificate.AddOctetString(11, sig);
+                encodedRootCertificate.AddOctetString(11, encodedRootCertificateSignature);
 
                 encodedRootCertificate.EndContainer(); // Close Structure
 
@@ -779,81 +778,79 @@ namespace Matter.Core.Commissioning
 
                 // Encode the NOC.
                 //
-                var encodedNocCertificate = new MatterTLV();
-                encodedNocCertificate.AddStructure();
+                var encodedPeerNocCertificate = new MatterTLV();
+                encodedPeerNocCertificate.AddStructure();
 
-                encodedNocCertificate.AddOctetString(1, noc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
-                encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
+                encodedPeerNocCertificate.AddOctetString(1, peerNoc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedPeerNocCertificate.AddUInt8(2, 1); // signature-algorithm
 
-                encodedNocCertificate.AddList(3); // Issuer
-                encodedNocCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
-                encodedNocCertificate.EndContainer(); // Close List
+                encodedPeerNocCertificate.AddList(3); // Issuer
+                encodedPeerNocCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
+                encodedPeerNocCertificate.EndContainer(); // Close List
 
-                notBefore = new DateTimeOffset(noc.NotBefore).ToEpochTime();
-                notAfter = new DateTimeOffset(noc.NotAfter).ToEpochTime();
+                notBefore = new DateTimeOffset(peerNoc.NotBefore).ToEpochTime();
+                notAfter = new DateTimeOffset(peerNoc.NotAfter).ToEpochTime();
 
-                encodedNocCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
-                encodedNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
+                encodedPeerNocCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
+                encodedPeerNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
 
-                encodedNocCertificate.AddList(6); // Subject
-                                                  //encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
-                                                  //encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
+                encodedPeerNocCertificate.AddList(6); // Subject
 
                 var nodeIdBytes = "DEDEDEDE00010001".ToByteArray();
                 var nodeId = new BigInteger(nodeIdBytes, false);
 
-                encodedNocCertificate.AddUInt64(17, nodeId.ToByteArrayUnsigned()); // NodeId
+                encodedPeerNocCertificate.AddUInt64(17, nodeId.ToByteArrayUnsigned()); // NodeId
+                encodedPeerNocCertificate.AddUInt64(21, fabric.FabricId.ToByteArrayUnsigned()); // FabricId
 
-                encodedNocCertificate.AddUInt64(21, fabric.FabricId.ToByteArrayUnsigned()); // FabricId
-                encodedNocCertificate.EndContainer(); // Close List
+                encodedPeerNocCertificate.EndContainer(); // Close List
 
-                encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
-                encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
+                encodedPeerNocCertificate.AddUInt8(7, 1); // public-key-algorithm
+                encodedPeerNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
 
-                encodedNocCertificate.AddOctetString(9, nocPublicKeyBytes); // PublicKey
+                encodedPeerNocCertificate.AddOctetString(9, peerNocPublicKeyBytes); // PublicKey
 
-                encodedNocCertificate.AddList(10); // Extensions
+                encodedPeerNocCertificate.AddList(10); // Extensions
 
-                encodedNocCertificate.AddStructure(1); // Basic Constraints
-                encodedNocCertificate.AddBool(1, false); // is-ca
-                encodedNocCertificate.EndContainer(); // Close Basic Constraints
+                encodedPeerNocCertificate.AddStructure(1); // Basic Constraints
+                encodedPeerNocCertificate.AddBool(1, false); // is-ca
+                encodedPeerNocCertificate.EndContainer(); // Close Basic Constraints
 
-                encodedNocCertificate.AddUInt8(2, 0x1);
+                encodedPeerNocCertificate.AddUInt8(2, 0x1);
 
-                encodedNocCertificate.AddArray(3); // Extended Key Usage
-                encodedNocCertificate.AddUInt8(0x02);
-                encodedNocCertificate.AddUInt8(0x01);
-                encodedNocCertificate.EndContainer();
+                encodedPeerNocCertificate.AddArray(3); // Extended Key Usage
+                encodedPeerNocCertificate.AddUInt8(0x02);
+                encodedPeerNocCertificate.AddUInt8(0x01);
+                encodedPeerNocCertificate.EndContainer();
 
-                encodedNocCertificate.AddOctetString(4, nocKeyIdentifier); // subject-key-id
-                encodedNocCertificate.AddOctetString(5, fabric.RootKeyIdentifier); // authority-key-id
+                encodedPeerNocCertificate.AddOctetString(4, peerNocKeyIdentifier); // subject-key-id
+                encodedPeerNocCertificate.AddOctetString(5, fabric.RootKeyIdentifier); // authority-key-id
 
-                encodedNocCertificate.EndContainer(); // Close Extensions
+                encodedPeerNocCertificate.EndContainer(); // Close Extensions
 
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
                 // The Matter specification just wants the two parts r & s.
                 //
-                var nocSignature = noc.GetSignature();
+                var peerNocSignature = peerNoc.GetSignature();
                 Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
 
                 // We need to convert this signature into a TLV format.
                 //
-                AsnDecoder.ReadSequence(nocSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
+                AsnDecoder.ReadSequence(peerNocSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
 
-                source = nocSignature.AsSpan().Slice(offset, length).ToArray();
+                source = peerNocSignature.AsSpan().Slice(offset, length).ToArray();
 
                 r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
                 s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
 
-                sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+                var encodedPeerNocCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
 
-                encodedNocCertificate.AddOctetString(11, sig);
+                encodedPeerNocCertificate.AddOctetString(11, encodedPeerNocCertificateSignature);
 
-                encodedNocCertificate.EndContainer(); // Close Structure
+                encodedPeerNocCertificate.EndContainer(); // Close Structure
 
                 Console.WriteLine("───────────────────────────────────────────────────");
                 Console.WriteLine("Encoded NOC");
-                Console.WriteLine(encodedNocCertificate);
+                Console.WriteLine(encodedPeerNocCertificate);
                 Console.WriteLine("───────────────────────────────────────────────────");
 
                 var addNocRequest = new MatterTLV();
@@ -874,7 +871,7 @@ namespace Matter.Core.Commissioning
 
                 addNocRequest.AddStructure(1); // CommandFields
 
-                addNocRequest.AddOctetString(0, encodedNocCertificate.GetBytes()); // NOCValue
+                addNocRequest.AddOctetString(0, encodedPeerNocCertificate.GetBytes()); // NOCValue
                 addNocRequest.AddOctetString(2, fabric.IPK); // IPKValue
                 addNocRequest.AddUInt64(3, 2); // CaseAdminSubject - In this case a NodeId of 2.
                 addNocRequest.AddUInt16(4, fabric.AdminVendorId); // AdminVendorId
@@ -1049,13 +1046,96 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine(TBEData2);
 
+                // TODO Verify this!
+
+
+
+                // Encode the NOC.
+                //
+
+                // Sign this tbsData3.
+                //
+                var nocSignature = fabric.OperationalCertificate.GetSignature();
+
+                // We need to convert this signature into a TLV format.
+                //
+                AsnDecoder.ReadSequence(nocSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
+
+                source = nocSignature.AsSpan().Slice(offset, length).ToArray();
+
+                r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
+                s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
+
+                var encodedNocCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+
+                var encodedNocCertificate = new MatterTLV();
+                encodedNocCertificate.AddStructure();
+
+                encodedNocCertificate.AddOctetString(1, fabric.OperationalCertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
+                encodedNocCertificate.AddUInt8(2, 1); // signature-algorithm
+
+                encodedNocCertificate.AddList(3); // Issuer
+                encodedNocCertificate.AddUInt64(20, fabric.RootCertificateId.ToByteArrayUnsigned());
+                encodedNocCertificate.EndContainer(); // Close List
+
+                notBefore = new DateTimeOffset(fabric.OperationalCertificate.NotBefore).ToEpochTime();
+                notAfter = new DateTimeOffset(fabric.OperationalCertificate.NotAfter).ToEpochTime();
+
+                encodedNocCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
+                encodedNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
+
+                encodedNocCertificate.AddList(6); // Subject
+
+                nodeIdBytes = "ABABABAB00010001".ToByteArray();
+                nodeId = new BigInteger(nodeIdBytes, false);
+
+                encodedNocCertificate.AddUInt64(17, nodeId.ToByteArrayUnsigned()); // NodeId
+                encodedNocCertificate.AddUInt64(21, fabric.FabricId.ToByteArrayUnsigned()); // FabricId
+
+                encodedNocCertificate.EndContainer(); // Close List
+
+                encodedNocCertificate.AddUInt8(7, 1); // public-key-algorithm
+                encodedNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
+
+                var nocPublicKey = fabric.OperationalCertificate.GetPublicKey() as ECPublicKeyParameters;
+                var nocPublicKeyBytes = nocPublicKey.Q.GetEncoded(false);
+                encodedNocCertificate.AddOctetString(9, nocPublicKeyBytes); // PublicKey
+
+                encodedNocCertificate.AddList(10); // Extensions
+
+                encodedNocCertificate.AddStructure(1); // Basic Constraints
+                encodedNocCertificate.AddBool(1, false); // is-ca
+                encodedNocCertificate.EndContainer(); // Close Basic Constraints
+
+                encodedNocCertificate.AddUInt8(2, 0x1);
+
+                encodedNocCertificate.AddArray(3); // Extended Key Usage
+                encodedNocCertificate.AddUInt8(0x02);
+                encodedNocCertificate.AddUInt8(0x01);
+                encodedNocCertificate.EndContainer();
+
+                var nocKeyIdentifier = SHA1.HashData(nocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
+
+                encodedNocCertificate.AddOctetString(4, nocKeyIdentifier); // subject-key-id
+                encodedNocCertificate.AddOctetString(5, fabric.RootKeyIdentifier); // authority-key-id
+
+                encodedNocCertificate.EndContainer(); // Close Extensions
+
+                encodedNocCertificate.AddOctetString(11, encodedNocCertificateSignature);
+
+                encodedNocCertificate.EndContainer(); // Close Structure
+
+                Console.WriteLine("───────────────────────────────────────────────────");
+                Console.WriteLine(encodedNocCertificate);
+                Console.WriteLine("───────────────────────────────────────────────────");
+
                 // Build sigma-3-tbsdata
                 //
                 var sigma3tbs = new MatterTLV();
 
                 sigma3tbs.AddStructure();
 
-                sigma3tbs.AddOctetString(1, encodedRootCertificate.GetBytes()); // initiatorNOC
+                sigma3tbs.AddOctetString(1, encodedNocCertificate.GetBytes()); // initiatorNOC
                 sigma3tbs.AddOctetString(3, ephermeralPublicKeysBytes); // initiatorEphPubKey
                 sigma3tbs.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
 
@@ -1068,6 +1148,7 @@ namespace Matter.Core.Commissioning
                 // Sign this tbsData3.
                 //
                 var signer = SignerUtilities.GetSigner("SHA256WITHECDSA");
+                //signer.Init(true, fabric.OperationalCertificateKeyPair.Private as ECPrivateKeyParameters);
                 signer.Init(true, fabric.KeyPair.Private as ECPrivateKeyParameters);
                 signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
                 byte[] sigma3tbsSignature = signer.GenerateSignature();
@@ -1083,14 +1164,14 @@ namespace Matter.Core.Commissioning
                 r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
                 s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
 
-                sig = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+                var encodedSigma3TbsSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
 
                 // Construct the sigma-3-tbe payload, which will be encrypted.
                 //
                 var sigma3tbe = new MatterTLV();
                 sigma3tbe.AddStructure();
-                sigma3tbe.AddOctetString(1, encodedRootCertificate.GetBytes());
-                sigma3tbe.AddOctetString(3, sig);
+                sigma3tbe.AddOctetString(1, encodedNocCertificate.GetBytes());
+                sigma3tbe.AddOctetString(3, encodedSigma3TbsSignature);
                 sigma3tbe.EndContainer();
 
                 var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
@@ -1136,7 +1217,19 @@ namespace Matter.Core.Commissioning
                 result = cipherMode.ProcessBytes(sigma3tbeBytes, 0, sigma3tbeBytes.Length, encryptedData, 0);
                 cipherMode.DoFinal(encryptedData, result);
 
+                Console.WriteLine("-");
+                Console.WriteLine(format: "NocPublicKey: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
+                Console.WriteLine("-");
+                Console.WriteLine(format: "Noc: {0}", BitConverter.ToString(encodedNocCertificate.GetBytes()).Replace("-", ""));
+                Console.WriteLine("-");
+                Console.WriteLine(format: "SignatureData: {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
+                Console.WriteLine("-");
+                Console.WriteLine(format: "Signature: {0}", BitConverter.ToString(encodedNocCertificateSignature).Replace("-", ""));
+                Console.WriteLine("-");
+                Console.WriteLine(format: "S3 Data: {0}", BitConverter.ToString(sigma3tbeBytes).Replace("-", ""));
+                Console.WriteLine("-");
                 Console.WriteLine(format: "S3 Encrypted: {0}", BitConverter.ToString(encryptedData).Replace("-", ""));
+                Console.WriteLine("-");
 
                 var sigma3 = new MatterTLV();
                 sigma3.AddStructure();

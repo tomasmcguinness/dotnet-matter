@@ -1,4 +1,7 @@
-﻿namespace Matter.Core
+﻿using Matter.Core.TLV;
+using Org.BouncyCastle.X509;
+
+namespace Matter.Core
 {
     public static class Extensions
     {
@@ -87,6 +90,13 @@
             }
 
             return "";
+        }
+
+        public static MatterTLV ToMatterCertificate(this X509Certificate certificate)
+        {
+            var certificateBytes = certificate.GetEncoded();
+            var tlv = new MatterTLV();
+            return tlv;
         }
     }
 }
