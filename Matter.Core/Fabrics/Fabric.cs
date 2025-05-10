@@ -82,7 +82,7 @@ namespace Matter.Core.Fabrics
             Console.WriteLine($"CompressedFabricIdentifier: {BitConverter.ToString(compressedFabricIdentifier).Replace("-", "")}");
             Console.WriteLine($"OperationalIPK: {BitConverter.ToString(operationalIPK).Replace("-", "")}");
 
-            var (noc, nocKeyPair) = GenerateNOC(rootKeyIdentifier);
+            var (noc, nocKeyPair) = GenerateNOC(keyPair, rootKeyIdentifier);
 
             return new Fabric()
             {
@@ -100,7 +100,7 @@ namespace Matter.Core.Fabrics
             };
         }
 
-        private static (X509Certificate, AsymmetricCipherKeyPair) GenerateNOC(byte[] rootKeyIdentifier)
+        private static (X509Certificate, AsymmetricCipherKeyPair) GenerateNOC(AsymmetricCipherKeyPair rootKeyPair, byte[] rootKeyIdentifier)
         {
             var keyPair = CertificateAuthority.GenerateKeyPair();
 
@@ -154,7 +154,8 @@ namespace Matter.Core.Fabrics
 
             // Create a signature factory for the specified algorithm. Sign the cert with the RootCertificate PrivateyKey
             //
-            ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", keyPair.Private as ECPrivateKeyParameters);
+            ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", rootKeyPair.Private as ECPrivateKeyParameters);
+            //ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", rootKeyPair.Private as ECPrivateKeyParameters);
             var noc = certGenerator.Generate(signatureFactory);
 
             return (noc, keyPair);

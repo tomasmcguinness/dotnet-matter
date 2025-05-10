@@ -1148,8 +1148,8 @@ namespace Matter.Core.Commissioning
                 // Sign this tbsData3.
                 //
                 var signer = SignerUtilities.GetSigner("SHA256WITHECDSA");
-                //signer.Init(true, fabric.OperationalCertificateKeyPair.Private as ECPrivateKeyParameters);
-                signer.Init(true, fabric.KeyPair.Private as ECPrivateKeyParameters);
+                signer.Init(true, fabric.OperationalCertificateKeyPair.Private as ECPrivateKeyParameters);
+                //signer.Init(true, fabric.KeyPair.Private as ECPrivateKeyParameters);
                 signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
                 byte[] sigma3tbsSignature = signer.GenerateSignature();
 
