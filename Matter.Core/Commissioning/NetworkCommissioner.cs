@@ -1231,12 +1231,12 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine(format: "S3 Encrypted: {0}", BitConverter.ToString(encryptedData).Replace("-", ""));
                 Console.WriteLine("-");
 
-                var sigma3 = new MatterTLV();
-                sigma3.AddStructure();
-                sigma3.AddOctetString(1, encryptedData); // sigma3EncryptedPayload
-                sigma3.EndContainer();
+                var sigma3Payload = new MatterTLV();
+                sigma3Payload.AddStructure();
+                sigma3Payload.AddOctetString(1, encryptedData); // sigma3EncryptedPayload
+                sigma3Payload.EndContainer();
 
-                var sigma3MessagePayload = new MessagePayload(sigma3);
+                var sigma3MessagePayload = new MessagePayload(sigma3Payload);
 
                 sigma3MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
@@ -1264,6 +1264,92 @@ namespace Matter.Core.Commissioning
                 {
                     Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
                 }
+
+                // Create a CASE session
+                //
+                byte[] caseInfo = Encoding.ASCII.GetBytes("SessionKeys");
+
+                ms = new MemoryStream();
+                saltWriter = new BinaryWriter(ms);
+                saltWriter.Write(fabric.OperationalIPK);
+                saltWriter.Write(sigma1Payload.GetBytes());
+                saltWriter.Write(sigma2Payload.GetBytes());
+                saltWriter.Write(sigma3Payload.GetBytes());
+
+                var secureSessionSalt = ms.ToArray();
+
+                hkdf = new HkdfBytesGenerator(new Sha256Digest());
+                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), secureSessionSalt, info));
+
+                var caseKeys = new byte[48];
+                hkdf.GenerateBytes(caseKeys, 0, 48);
+
+                Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
+
+                encryptKey = caseKeys.AsSpan().Slice(0, 16).ToArray();
+                decryptKey = caseKeys.AsSpan().Slice(16, 16).ToArray();
+                attestationKey = caseKeys.AsSpan().Slice(32, 16).ToArray();
+
+
+
+                var caseSession = new CaseSecureSession(udpConnection, sigma2ResponderSessionId, encryptKey, decryptKey);
+
+                // We then create a new Exchange using the secure session.
+                //
+                var caseExchange = caseSession.CreateExchange();
+
+
+
+
+                var commissioningCompletePayload = new MatterTLV();
+                commissioningCompletePayload.AddStructure();
+                commissioningCompletePayload.AddBool(0, false);
+                commissioningCompletePayload.AddBool(1, false);
+                commissioningCompletePayload.AddArray(tagNumber: 2); // InvokeRequests
+
+                commissioningCompletePayload.AddStructure();
+
+                commissioningCompletePayload.AddList(tagNumber: 0); // CommandPath
+
+                commissioningCompletePayload.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
+                commissioningCompletePayload.AddUInt32(tagNumber: 1, 0x30); // ClusterId 0x30 - General Commissioning
+                commissioningCompletePayload.AddUInt16(tagNumber: 2, 0x04); // 11.18.6. Command CompleteCommissioning
+
+                commissioningCompletePayload.EndContainer();
+
+                commissioningCompletePayload.AddStructure(1); // CommandFields
+                commissioningCompletePayload.EndContainer(); // Close the CommandFields
+
+                commissioningCompletePayload.EndContainer(); // Close the structure
+
+                commissioningCompletePayload.EndContainer(); // Close the array
+
+                commissioningCompletePayload.AddUInt8(255, 12); // interactionModelRevision
+
+                commissioningCompletePayload.EndContainer(); // Close the structure
+
+                var commissioningCompleteMessagePayload = new MessagePayload(commissioningCompletePayload);
+
+                commissioningCompleteMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                // Table 14. Protocol IDs for the Matter Standard Vendor ID
+                commissioningCompleteMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                commissioningCompleteMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+
+                var commissioningCompleteMessageFrame = new MessageFrame(commissioningCompleteMessagePayload);
+
+                // TODO Send this using MRP.
+                commissioningCompleteMessageFrame.MessageFlags |= MessageFlags.S;
+                commissioningCompleteMessageFrame.SecurityFlags = 0x00;
+                commissioningCompleteMessageFrame.SourceNodeID = 0x00;
+
+                await caseExchange.SendAsync(commissioningCompleteMessageFrame);
+
+                var commissioningCompleteResponseMessageFrame = await caseExchange.WaitForNextMessageAsync();
+
+                Console.WriteLine(commissioningCompleteMessageFrame.MessagePayload.ApplicationPayload);
+
+                await caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter);
 
                 await Task.Delay(5000);
             }
