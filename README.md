@@ -25,6 +25,12 @@ The first step for my commissioner is to take the manual pairing code, parse it 
 > [!Note]
 > The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
 
+10/05/2025
+
+Created a CASE Secure Session today. This meant generating & handling the Sigma1, Sigma2 and Sigma3 messages! 
+
+* https://tomasmcguinness.com/2025/05/10/building-a-net-matter-controller-commissioning-flow-case-pt1-2/
+
 ### 07/05/2025
 
 Figured out how to generated a Root CA certificate and managed to get the AddNOC command working too. THe matter.js example device is now creating a fabric!
