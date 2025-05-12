@@ -1393,6 +1393,7 @@ namespace Matter.Core.Commissioning
             //
             _commissioningThread = new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery));
             _commissioningThread.Start(_fabric);
+            _commissioningThread.Join();
         }
     }
 }

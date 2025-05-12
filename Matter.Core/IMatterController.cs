@@ -2,7 +2,7 @@
 {
     public interface IMatterController
     {
-        void Start();
+        void Init();
 
         Task<ICommissioner> CreateCommissionerAsync();
     }

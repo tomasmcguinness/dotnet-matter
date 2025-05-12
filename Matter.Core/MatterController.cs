@@ -11,25 +11,24 @@ namespace Matter.Core
         public MatterController()
         {
             _commissioners = new Dictionary<int, ICommissioner>();
+
         }
 
         public Task<ICommissioner> CreateCommissionerAsync()
         {
-            ICommissioner commissioner = new NetworkCommissioner(_fabric);
+            if (_fabric == null)
+            {
+                throw new InvalidOperationException("Fabric not initialized. Call Init() first.");
+            }
 
-            // Hook into some events here, so we know the score!
+            ICommissioner commissioner = new NetworkCommissioner(_fabric);
 
             _commissioners.Add(commissioner.Id, commissioner);
 
             return Task.FromResult(commissioner);
         }
 
-        public void Start()
-        {
-            LoadFabric();
-        }
-
-        private void LoadFabric()
+        public void Init()
         {
             _fabric = Fabric.CreateNew("Test");
         }

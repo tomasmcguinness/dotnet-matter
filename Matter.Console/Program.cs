@@ -5,6 +5,8 @@ Console.WriteLine("Attempting to commission a Matter device");
 
 IMatterController controller = new MatterController();
 
+controller.Init();
+
 var commissioner = await controller.CreateCommissionerAsync();
 
 commissioner.CommissionDevice(3840);
