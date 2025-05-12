@@ -1,7 +1,5 @@
-using Matter.WebController;
+using Matter.Core;
 using Matter.WebController.Hubs;
-using Microsoft.Extensions.Hosting;
-using Zeroconf;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +8,7 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddSignalR();
 
-builder.Services.AddSingleton<DiscoveryMonitorLoop>();
+builder.Services.AddSingleton<IMatterController, MatterController>();
 
 var app = builder.Build();
 
@@ -29,13 +27,15 @@ app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapHub<DiscoveryHub>("/discoveryHub");
+app.MapHub<CommissioningHub>("/discoveryHub");
 
-var monitorLoop = app.Services.GetRequiredService<DiscoveryMonitorLoop>();
-monitorLoop.StartMonitorLoop();
+var matterController = app.Services.GetRequiredService<IMatterController>();
+matterController.Start();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.UseWebSockets();
 
 app.Run();

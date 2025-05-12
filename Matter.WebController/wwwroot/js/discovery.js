@@ -1,6 +1,6 @@
 ﻿"use strict";
 
-var connection = new signalR.HubConnectionBuilder().withUrl("/discoveryHub").build();
+var connection = new signalR.HubConnectionBuilder().withUrl("/commissioningHub").build();
 
 //Disable the send button until connection is established.
 document.getElementById("sendButton").disabled = true;

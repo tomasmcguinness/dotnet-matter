@@ -25,7 +25,7 @@ using System.Text;
 
 namespace Matter.Core.Commissioning
 {
-    public class NetworkCommissioningThread
+    internal class NetworkCommissioningThread
     {
         private readonly int _discriminator;
         private readonly ManualResetEvent _resetEvent;
@@ -1367,14 +1367,19 @@ namespace Matter.Core.Commissioning
         }
     }
 
-    public class NetworkCommissioner
+    internal class NetworkCommissioner : ICommissioner
     {
         private readonly Fabric _fabric;
+        private readonly int _commissionerId;
+        private Thread _commissioningThread;
 
-        public NetworkCommissioner()
+        public NetworkCommissioner(Fabric fabric)
         {
-            _fabric = Fabric.CreateNew("Test");
+            _fabric = fabric;
+            _commissionerId = RandomNumberGenerator.GetInt32(0, 1000000);
         }
+
+        public int Id => _commissionerId;
 
         public void CommissionDevice(int discriminator)
         {
@@ -1386,11 +1391,8 @@ namespace Matter.Core.Commissioning
 
             // Start the thread, passing the fabric as a parameter.
             //
-            new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery)).Start(_fabric);
-
-            // Give the thread some time to complete commissioning.
-            //
-            resetEvent.WaitOne(60000);
+            _commissioningThread = new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery));
+            _commissioningThread.Start(_fabric);
         }
     }
 }

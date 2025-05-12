@@ -1,16 +1,25 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Matter.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Matter.WebController.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/devices")]
     [ApiController]
     public class DevicesApiController : ControllerBase
     {
-        public IActionResult Post()
-        {
+        private readonly IMatterController _matterController;
 
-            return Ok();
+        public DevicesApiController(IMatterController matterController)
+        {
+            _matterController = matterController;
+        }
+
+        public async Task<IActionResult> Post()
+        {
+            var commissioner = await _matterController.CreateCommissionerAsync();
+            commissioner.CommissionDevice(3840);
+
+            return Ok(new { commissioner.Id });
         }
     }
 }

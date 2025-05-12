@@ -2,7 +2,7 @@
 
 namespace Matter.WebController.Hubs
 {
-    public class DiscoveryHub : Hub
+    public class CommissioningHub : Hub
     {
     }
 }
