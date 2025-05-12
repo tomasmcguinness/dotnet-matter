@@ -33,8 +33,11 @@ namespace Matter.Core.Fabrics
         public ushort AdminVendorId { get; private set; }
 
         public byte[] RootKeyIdentifier { get; private set; }
+
         public BigInteger FabricId { get; private set; }
+
         public X509Certificate OperationalCertificate { get; private set; }
+
         public AsymmetricCipherKeyPair OperationalCertificateKeyPair { get; private set; }
 
         public static Fabric CreateNew(string fabricName)
@@ -108,7 +111,6 @@ namespace Matter.Core.Fabrics
             var nocPublicKeyBytes = nocPublicKey.Q.GetEncoded(false);
             var nocKeyIdentifier = SHA1.HashData(nocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
 
-
             var certGenerator = new X509V3CertificateGenerator();
             var randomGenerator = new CryptoApiRandomGenerator();
             var random = new SecureRandom(randomGenerator);
@@ -123,7 +125,7 @@ namespace Matter.Core.Fabrics
 
             subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.1")); // NodeId
             subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.5")); // FabricId
-            subjectValues.Add($"ABABABAB00010001");
+            subjectValues.Add($"CACACACA00000001");
             subjectValues.Add($"FAB000000000001D");
 
             X509Name subjectDN = new X509Name(subjectOids, subjectValues);
