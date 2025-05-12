@@ -1,4 +1,6 @@
 ﻿using Matter.Core.Sessions;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Channels;
 
 namespace Matter.Core
@@ -14,7 +16,9 @@ namespace Matter.Core
 
         private readonly Timer _acknowledgementTimer;
 
-        private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(5);
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
+        private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(1);
 
         // For this, the role will always be Initiator.
         //
@@ -29,15 +33,23 @@ namespace Matter.Core
             _readingThread.Start();
         }
 
-        private async void SendStandaloneAcknowledgement(object? state)
+        public void Close()
         {
-            if (_acknowledgedMessageCounter != _receivedMessageCounter)
-            {
-                _acknowledgedMessageCounter = _receivedMessageCounter;
+            _cancellationTokenSource.Cancel();
+            _readingThread.Join();
 
-                await AcknowledgeMessageAsync(_acknowledgedMessageCounter);
-            }
+            Console.WriteLine("Closed MessageExchange {0}", _exchangeId);
         }
+
+        //private async void SendStandaloneAcknowledgement(object? state)
+        //{
+        //    if (_acknowledgedMessageCounter != _receivedMessageCounter)
+        //    {
+        //        _acknowledgedMessageCounter = _receivedMessageCounter;
+
+        //        await AcknowledgeMessageAsync(_acknowledgedMessageCounter);
+        //    }
+        //}
 
         public async Task SendAsync(MessageFrame message)
         {
@@ -81,9 +93,9 @@ namespace Matter.Core
 
         public async Task<MessageFrame> WaitForNextMessageAsync()
         {
-            Console.WriteLine("Waiting for incoming message...");
+            Debug.WriteLine("Waiting for incoming message...");
 
-            return await _incomingMessageChannel.Reader.ReadAsync();
+            return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
         }
 
         private async void ReceiveAsync()
@@ -103,7 +115,7 @@ namespace Matter.Core
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
                     {
-                        Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
+                        Debug.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
                         return;
                     }
 
@@ -137,7 +149,7 @@ namespace Matter.Core
                     Console.ForegroundColor = ConsoleColor.White;
                 }
 
-            } while (true);
+            } while (!_cancellationTokenSource.Token.IsCancellationRequested);
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter)
@@ -145,6 +157,7 @@ namespace Matter.Core
             MessagePayload payload = new MessagePayload();
             payload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
             payload.ExchangeFlags |= ExchangeFlags.Initiator;
+            payload.ExchangeID = _exchangeId;
             payload.AcknowledgedMessageCounter = messageCounter;
             payload.ProtocolId = 0x00; // Secure Channel
             payload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement

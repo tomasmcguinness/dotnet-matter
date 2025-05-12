@@ -25,6 +25,12 @@ namespace Matter.Core
             return string.Format("{0} | {1} | {2}", message.MessageCounter, protocolName, protocolOpName);
         }
 
+        public static string DebugInfo(this MessagePayload message)
+        {
+            var (protocolName, protocolOpName) = GetFriendlyNames(message);
+            return string.Format("{0} | {1} | {2} | {3}", message.ExchangeFlags, message.ExchangeID, protocolName, protocolOpName);
+        }
+
         private static (string protocolId, string protocolOpCode) GetFriendlyNames(MessagePayload messagePayload)
         {
             var protocolName = messagePayload.ProtocolId.ToProtocolName();

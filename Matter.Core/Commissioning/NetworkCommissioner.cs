@@ -15,20 +15,15 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
+using System;
 using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using System.Security.Policy;
 using System.Text;
-using System.Windows.Forms;
-using System.Windows.Input;
-using System.Windows.Interop;
 
 namespace Matter.Core.Commissioning
 {
@@ -80,9 +75,9 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine("UDP Connection has been established. Starting PASE Exchange....");
 
-                UnsecureSession session = new UnsecureSession(udpConnection);
+                UnsecureSession unsecureSession = new UnsecureSession(udpConnection, 0);
 
-                var unsecureExchange = session.CreateExchange();
+                var unsecureExchange = unsecureSession.CreateExchange();
 
                 Console.WriteLine("┌───────────────────────────────────────┐");
                 Console.WriteLine("| COMMISSIONING STEP 6 - Establish PASE |");
@@ -136,19 +131,19 @@ namespace Matter.Core.Commissioning
 
                 var responseMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(responseMessageFrame.MessagePayload.ApplicationPayload.ToString());
+                //Console.WriteLine(responseMessageFrame.MessagePayload.ApplicationPayload.ToString());
 
-                Console.WriteLine("PBKDFParamResponse received");
-                Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
-                    (byte)responseMessageFrame.MessageFlags,
-                    responseMessageFrame.SessionID,
-                    (byte)responseMessageFrame.SecurityFlags,
-                    responseMessageFrame.MessageCounter,
-                    (byte)responseMessageFrame.MessagePayload.ExchangeFlags,
-                    responseMessageFrame.MessagePayload.ProtocolOpCode,
-                    responseMessageFrame.MessagePayload.ExchangeID,
-                    responseMessageFrame.MessagePayload.ProtocolId
-                );
+                //Console.WriteLine("PBKDFParamResponse received");
+                //Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
+                //    (byte)responseMessageFrame.MessageFlags,
+                //    responseMessageFrame.SessionID,
+                //    (byte)responseMessageFrame.SecurityFlags,
+                //    responseMessageFrame.MessageCounter,
+                //    (byte)responseMessageFrame.MessagePayload.ExchangeFlags,
+                //    responseMessageFrame.MessagePayload.ProtocolOpCode,
+                //    responseMessageFrame.MessagePayload.ExchangeID,
+                //    responseMessageFrame.MessagePayload.ProtocolId
+                //);
 
                 // We have to walk the response.
                 //
@@ -162,14 +157,14 @@ namespace Matter.Core.Commissioning
 
                 var peerSessionId = responderSessionId;
 
-                Console.WriteLine("Responder Session Id: {0}", responderSessionId);
+                //Console.WriteLine("Responder Session Id: {0}", responderSessionId);
 
                 PBKDFParamResponse.OpenStructure(4);
 
                 var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
                 var salt = PBKDFParamResponse.GetOctetString(2);
 
-                Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
+                //Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
 
                 PBKDFParamResponse.CloseContainer();
 
@@ -196,11 +191,11 @@ namespace Matter.Core.Commissioning
 
                 var sessionContextHash = SHA256.HashData(contextToHash.ToArray());
 
-                Console.WriteLine(string.Join(",", sessionContextHash));
-                Console.WriteLine("Context: {0}", BitConverter.ToString(SPAKE_CONTEXT));
-                Console.WriteLine("Request: {0}", BitConverter.ToString(PBKDFParamRequest.GetBytes()));
-                Console.WriteLine("Response: {0}", BitConverter.ToString(PBKDFParamResponse.GetBytes()));
-                Console.WriteLine("Hash: {0}", BitConverter.ToString(sessionContextHash));
+                //Console.WriteLine(string.Join(",", sessionContextHash));
+                //Console.WriteLine("Context: {0}", BitConverter.ToString(SPAKE_CONTEXT));
+                //Console.WriteLine("Request: {0}", BitConverter.ToString(PBKDFParamRequest.GetBytes()));
+                //Console.WriteLine("Response: {0}", BitConverter.ToString(PBKDFParamResponse.GetBytes()));
+                //Console.WriteLine("Hash: {0}", BitConverter.ToString(sessionContextHash));
 
                 // Build the PAKE1 message
                 //
@@ -247,17 +242,17 @@ namespace Matter.Core.Commissioning
 
                 var pake2MessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine("Message received");
-                Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
-                    (byte)pake2MessageFrame.MessageFlags,
-                    pake2MessageFrame.SessionID,
-                    (byte)pake2MessageFrame.SecurityFlags,
-                    pake2MessageFrame.MessageCounter,
-                    (byte)pake2MessageFrame.MessagePayload.ExchangeFlags,
-                    pake2MessageFrame.MessagePayload.ProtocolOpCode,
-                    pake2MessageFrame.MessagePayload.ExchangeID,
-                    pake2MessageFrame.MessagePayload.ProtocolId
-                );
+                //Console.WriteLine("Message received");
+                //Console.WriteLine("MessageFlags: {0:X2}\nSessionId: {1:X2}\nSecurityFlags: {2:X2}\nMessageCounter: {3:X2}\nExchangeFlags: {4:X2}\nProtocol OpCode: {5:X2}\nExchange Id: {6:X2}\nProtocolId: {7:X2}",
+                //    (byte)pake2MessageFrame.MessageFlags,
+                //    pake2MessageFrame.SessionID,
+                //    (byte)pake2MessageFrame.SecurityFlags,
+                //    pake2MessageFrame.MessageCounter,
+                //    (byte)pake2MessageFrame.MessagePayload.ExchangeFlags,
+                //    pake2MessageFrame.MessagePayload.ProtocolOpCode,
+                //    pake2MessageFrame.MessagePayload.ExchangeID,
+                //    pake2MessageFrame.MessagePayload.ProtocolId
+                //);
 
                 var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
 
@@ -266,8 +261,8 @@ namespace Matter.Core.Commissioning
                 var Y = pake2.GetOctetString(1);
                 var Verifier = pake2.GetOctetString(2);
 
-                Console.WriteLine("Y: {0}", BitConverter.ToString(Y).Replace("-", ""));
-                Console.WriteLine("Verifier: {0}", BitConverter.ToString(Verifier).Replace("-", ""));
+                //Console.WriteLine("Y: {0}", BitConverter.ToString(Y).Replace("-", ""));
+                //Console.WriteLine("Verifier: {0}", BitConverter.ToString(Verifier).Replace("-", ""));
 
                 pake2.CloseContainer();
 
@@ -315,7 +310,7 @@ namespace Matter.Core.Commissioning
 
                 var pakeFinishedMessageFrame = await unsecureExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine("StatusReport received");
+                //Console.WriteLine("StatusReport received");
 
                 // This is the status report.
                 //
@@ -337,21 +332,21 @@ namespace Matter.Core.Commissioning
                 var keys = new byte[48];
                 hkdf.GenerateBytes(keys, 0, 48);
 
-                Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
+                //Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
 
                 var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
                 var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                 var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
 
-                Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
-                Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
-                Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
+                //Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
+                //Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
+                //Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
 
-                Console.WriteLine(format: "PeerSessionId: {0}", peerSessionId);
 
-                Console.WriteLine("┌────────────────┐");
-                Console.WriteLine("| PASE Complete! |");
-                Console.WriteLine("└────────────────┘");
+                Debug.WriteLine("┌─────────────────────────┐");
+                Debug.WriteLine("| PASE Complete! |");
+                Debug.WriteLine(format: "| PeerSessionId: {0} |", peerSessionId);
+                Debug.WriteLine("└─────────────────────────┘");
 
                 // Create a PASE session
                 //
@@ -457,6 +452,8 @@ namespace Matter.Core.Commissioning
                 //await paseExchange.ReceiveAsync();
                 #endregion
 
+                #region CSRRequest
+
                 Console.WriteLine("┌────────────────────────────────────────────┐");
                 Console.WriteLine("| COMMISSIONING STEP 11 - Sending CSRRequest |");
                 Console.WriteLine("└────────────────────────────────────────────┘");
@@ -509,10 +506,6 @@ namespace Matter.Core.Commissioning
 
                 await paseExchange.SendAsync(csrRequestMessageFrame);
 
-                Console.WriteLine("┌───────────────────────────────────────────────┐");
-                Console.WriteLine("| COMMISSIONING STEP 11 - Receiving CSRResponse |");
-                Console.WriteLine("└───────────────────────────────────────────────┘");
-
                 var csrResponseMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
                 var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
@@ -537,9 +530,9 @@ namespace Matter.Core.Commissioning
 
                 var nocPayload = new MatterTLV(nocsrBytes);
 
-                Console.WriteLine("Decoded NOC CSR");
-                Console.WriteLine();
-                Console.WriteLine(nocPayload);
+                //Console.WriteLine("Decoded NOC CSR");
+                //Console.WriteLine();
+                //Console.WriteLine(nocPayload);
 
                 nocPayload.OpenStructure();
                 var derBytes = nocPayload.GetOctetString(1);
@@ -615,17 +608,19 @@ namespace Matter.Core.Commissioning
 
                 peerNoc.CheckValidity();
 
-                Console.WriteLine("NOC Certificate");
-                Console.WriteLine(peerNoc);
+                //Console.WriteLine("NOC Certificate");
+                //Console.WriteLine(peerNoc);
 
-                Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
-                Console.WriteLine(BitConverter.ToString(peerNoc.GetEncoded()).Replace("-", ""));
-                Console.WriteLine("───────────────────────────────────────────────────");
-                Console.WriteLine();
+                //Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
+                //Console.WriteLine(BitConverter.ToString(peerNoc.GetEncoded()).Replace("-", ""));
+                //Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine();
 
                 await paseExchange.AcknowledgeMessageAsync(csrResponseMessageFrame.MessageCounter);
 
-                #region AddTrustedRootCertificate
+                #endregion
+
+                #region COMMISSIONING STEP 12 - AddTrustedRootCertificate
 
                 Console.WriteLine("┌───────────────────────────────────────────────────┐");
                 Console.WriteLine("| COMMISSIONING STEP 12 - AddTrustedRootCertificate |");
@@ -677,18 +672,18 @@ namespace Matter.Core.Commissioning
 
                 encodedRootCertificate.EndContainer(); // Close Extensions
 
-                Console.WriteLine(fabric.RootCertificate);
+                //Console.WriteLine(fabric.RootCertificate);
 
-                Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
-                Console.WriteLine(BitConverter.ToString(fabric.RootCertificate.GetEncoded()).Replace("-", ""));
-                Console.WriteLine("───────────────────────────────────────────────────");
-                Console.WriteLine();
+                //Console.WriteLine("───────────────── DER ENCODED CERT ────────────────");
+                //Console.WriteLine(BitConverter.ToString(fabric.RootCertificate.GetEncoded()).Replace("-", ""));
+                //Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine();
 
                 // Signature. This is an ASN1 EC Signature that is DER encoded.
                 // The Matter specification just wants the two parts r & s.
                 //
                 var signature = fabric.RootCertificate.GetSignature();
-                Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
+                //Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
 
                 // We need to convert this signature into a TLV format.
                 //
@@ -705,10 +700,10 @@ namespace Matter.Core.Commissioning
 
                 encodedRootCertificate.EndContainer(); // Close Structure
 
-                Console.WriteLine("───────────────────────────────────────────────────");
-                Console.WriteLine("EncodedRootCertificate");
-                Console.WriteLine(encodedRootCertificate);
-                Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine("EncodedRootCertificate");
+                //Console.WriteLine(encodedRootCertificate);
+                //Console.WriteLine("───────────────────────────────────────────────────");
 
                 var addTrustedRootCertificateRequest = new MatterTLV();
                 addTrustedRootCertificateRequest.AddStructure();
@@ -831,7 +826,7 @@ namespace Matter.Core.Commissioning
                 // The Matter specification just wants the two parts r & s.
                 //
                 var peerNocSignature = peerNoc.GetSignature();
-                Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
+                //Console.WriteLine("Signature: {0}", BitConverter.ToString(signature));
 
                 // We need to convert this signature into a TLV format.
                 //
@@ -848,10 +843,10 @@ namespace Matter.Core.Commissioning
 
                 encodedPeerNocCertificate.EndContainer(); // Close Structure
 
-                Console.WriteLine("───────────────────────────────────────────────────");
-                Console.WriteLine("Encoded NOC");
-                Console.WriteLine(encodedPeerNocCertificate);
-                Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine("Encoded NOC");
+                //Console.WriteLine(encodedPeerNocCertificate);
+                //Console.WriteLine("───────────────────────────────────────────────────");
 
                 var addNocRequest = new MatterTLV();
                 addNocRequest.AddStructure();
@@ -909,6 +904,11 @@ namespace Matter.Core.Commissioning
                 //
                 await paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter);
 
+                // We're done with PASE, so close the exchange.
+                //
+                paseExchange.Close();
+                //paseSession.Close();
+
                 #endregion
 
                 // Perform Step 13 of the Commissioning Flow.
@@ -919,6 +919,10 @@ namespace Matter.Core.Commissioning
 
                 // Create a new Exchange
                 //
+                //udpConnection = new UdpConnection();
+                //unsecureSession = new UnsecureSession(udpConnection, 1);
+                //unsecureExchange = unsecureSession.CreateExchange();
+
                 paseExchange = paseSession.CreateExchange();
 
                 // Exchange CASE Messages, starting with Sigma1
@@ -994,9 +998,10 @@ namespace Matter.Core.Commissioning
                 var ecPoint = curve.Curve.DecodePoint(sigma2ResponderEphPublicKey);
                 var ephPublicKey = new ECPublicKeyParameters(ecPoint, new ECDomainParameters(curve));
 
-                var sharedSecret = sigmaKeyAgreement.CalculateAgreement(ephPublicKey);
+                var sharedSecretResult = sigmaKeyAgreement.CalculateAgreement(ephPublicKey);
+                var sharedSecret = sharedSecretResult.ToByteArrayUnsigned();
 
-                Console.WriteLine("SharedSecret: {0}", BitConverter.ToString(sharedSecret.ToByteArrayUnsigned()).Replace("-", ""));
+                //Console.WriteLine("SharedSecret: {0}", BitConverter.ToString(sharedSecret).Replace("-", ""));
 
                 // Generate the shared key using HKDF
                 //
@@ -1019,12 +1024,12 @@ namespace Matter.Core.Commissioning
                 info = Encoding.ASCII.GetBytes("Sigma2");
 
                 hkdf = new HkdfBytesGenerator(new Sha256Digest());
-                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), salt, info));
+                hkdf.Init(new HkdfParameters(sharedSecret, salt, info));
 
                 var sigma2Key = new byte[16];
                 hkdf.GenerateBytes(sigma2Key, 0, 16);
 
-                Console.WriteLine(format: "S2K: {0}", BitConverter.ToString(sigma2Key).Replace("-", ""));
+                //Console.WriteLine(format: "S2K: {0}", BitConverter.ToString(sigma2Key).Replace("-", ""));
 
                 // Step 4 - Use the S2K to decrypt the payload
                 // 
@@ -1044,10 +1049,9 @@ namespace Matter.Core.Commissioning
 
                 var TBEData2 = new MatterTLV(plainTextData);
 
-                Console.WriteLine(TBEData2);
+                //Console.WriteLine(TBEData2);
 
                 // TODO Verify this!
-
 
 
                 // Encode the NOC.
@@ -1125,9 +1129,9 @@ namespace Matter.Core.Commissioning
 
                 encodedNocCertificate.EndContainer(); // Close Structure
 
-                Console.WriteLine("───────────────────────────────────────────────────");
-                Console.WriteLine(encodedNocCertificate);
-                Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine("───────────────────────────────────────────────────");
+                //Console.WriteLine(encodedNocCertificate);
+                //Console.WriteLine("───────────────────────────────────────────────────");
 
                 // Build sigma-3-tbsdata
                 //
@@ -1143,7 +1147,7 @@ namespace Matter.Core.Commissioning
 
                 var sigma3tbsBytes = sigma3tbs.GetBytes();
 
-                Console.WriteLine("sigma3tbsBytes {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
+                //Console.WriteLine("sigma3tbsBytes {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
 
                 // Sign this tbsData3.
                 //
@@ -1153,7 +1157,7 @@ namespace Matter.Core.Commissioning
                 signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
                 byte[] sigma3tbsSignature = signer.GenerateSignature();
 
-                Console.WriteLine("sigma3tbsSignature {0}", BitConverter.ToString(sigma3tbsSignature).Replace("-", ""));
+                //Console.WriteLine("sigma3tbsSignature {0}", BitConverter.ToString(sigma3tbsSignature).Replace("-", ""));
 
                 // Convert from an ASN.1 signature to a TLV encoded one.
                 //
@@ -1176,12 +1180,12 @@ namespace Matter.Core.Commissioning
 
                 var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
 
-                Console.WriteLine("sigma1Bytes {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
-                Console.WriteLine("sigma2Bytes {0}", BitConverter.ToString(sigma2Payload.GetBytes()).Replace("-", ""));
+                //Console.WriteLine("sigma1Bytes {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
+                //Console.WriteLine("sigma2Bytes {0}", BitConverter.ToString(sigma2Payload.GetBytes()).Replace("-", ""));
 
                 var sigma3tbeTranscriptHash = SHA256.HashData(sigma1Payload.GetBytes().Concat(sigma2Payload.GetBytes()).ToArray());
 
-                Console.WriteLine("S3 TranscriptHash {0}", BitConverter.ToString(sigma3tbeTranscriptHash).Replace("-", ""));
+                //Console.WriteLine("S3 TranscriptHash {0}", BitConverter.ToString(sigma3tbeTranscriptHash).Replace("-", ""));
 
                 ms = new MemoryStream();
                 saltWriter = new BinaryWriter(ms);
@@ -1190,19 +1194,19 @@ namespace Matter.Core.Commissioning
 
                 salt = ms.ToArray();
 
-                Console.WriteLine("S3 Salt {0}", BitConverter.ToString(salt).Replace("-", ""));
+                //Console.WriteLine("S3 Salt {0}", BitConverter.ToString(salt).Replace("-", ""));
 
                 // Step 3 - Compute the S3K (the shared key)
                 //
                 info = Encoding.ASCII.GetBytes("Sigma3");
 
                 hkdf = new HkdfBytesGenerator(new Sha256Digest());
-                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), salt, info));
+                hkdf.Init(new HkdfParameters(sharedSecret, salt, info));
 
                 var sigma3Key = new byte[16];
                 hkdf.GenerateBytes(sigma3Key, 0, 16);
 
-                Console.WriteLine(format: "S3K: {0}", BitConverter.ToString(sigma3Key).Replace("-", ""));
+                //Console.WriteLine(format: "S3K: {0}", BitConverter.ToString(sigma3Key).Replace("-", ""));
 
                 nonce = Encoding.ASCII.GetBytes("NCASE_Sigma3N");
 
@@ -1217,19 +1221,19 @@ namespace Matter.Core.Commissioning
                 result = cipherMode.ProcessBytes(sigma3tbeBytes, 0, sigma3tbeBytes.Length, encryptedData, 0);
                 cipherMode.DoFinal(encryptedData, result);
 
-                Console.WriteLine("-");
-                Console.WriteLine(format: "NocPublicKey: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
-                Console.WriteLine("-");
-                Console.WriteLine(format: "Noc: {0}", BitConverter.ToString(encodedNocCertificate.GetBytes()).Replace("-", ""));
-                Console.WriteLine("-");
-                Console.WriteLine(format: "SignatureData: {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
-                Console.WriteLine("-");
-                Console.WriteLine(format: "Signature: {0}", BitConverter.ToString(encodedNocCertificateSignature).Replace("-", ""));
-                Console.WriteLine("-");
-                Console.WriteLine(format: "S3 Data: {0}", BitConverter.ToString(sigma3tbeBytes).Replace("-", ""));
-                Console.WriteLine("-");
-                Console.WriteLine(format: "S3 Encrypted: {0}", BitConverter.ToString(encryptedData).Replace("-", ""));
-                Console.WriteLine("-");
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "NocPublicKey: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "Noc: {0}", BitConverter.ToString(encodedNocCertificate.GetBytes()).Replace("-", ""));
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "SignatureData: {0}", BitConverter.ToString(sigma3tbsBytes).Replace("-", ""));
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "Signature: {0}", BitConverter.ToString(encodedNocCertificateSignature).Replace("-", ""));
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "S3 Data: {0}", BitConverter.ToString(sigma3tbeBytes).Replace("-", ""));
+                //Console.WriteLine("-");
+                //Console.WriteLine(format: "S3 Encrypted: {0}", BitConverter.ToString(encryptedData).Replace("-", ""));
+                //Console.WriteLine("-");
 
                 var sigma3Payload = new MatterTLV();
                 sigma3Payload.AddStructure();
@@ -1253,52 +1257,71 @@ namespace Matter.Core.Commissioning
 
                 var successMessageFrame = await paseExchange.WaitForNextMessageAsync();
 
-                if (MessageFrame.IsStatusReport(successMessageFrame))
-                {
-                    Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
-                }
+                //if (MessageFrame.IsStatusReport(successMessageFrame))
+                //{
+                //Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
+                //}
 
                 await paseExchange.AcknowledgeMessageAsync(successMessageFrame.MessageCounter);
 
-                if (MessageFrame.IsStatusReport(successMessageFrame))
-                {
-                    Console.WriteLine(successMessageFrame.MessagePayload.ApplicationPayload);
-                }
+                //Console.WriteLine("operationalIdentityProtectionKey: {0}", BitConverter.ToString(fabric.OperationalIPK).Replace("-", ""));
+                //Console.WriteLine("sigma1Bytes: {0}", BitConverter.ToString(sigma1Payload.GetBytes()).Replace("-", ""));
+                //Console.WriteLine("sigma2Bytes: {0}", BitConverter.ToString(sigma2Payload.GetBytes()).Replace("-", ""));
+                //Console.WriteLine("sigma3Bytes: {0}", BitConverter.ToString(sigma3Payload.GetBytes()).Replace("-", ""));
 
-                // Create a CASE session
-                //
                 byte[] caseInfo = Encoding.ASCII.GetBytes("SessionKeys");
+
+                ms = new MemoryStream();
+                var transcriptWriter = new BinaryWriter(ms);
+                transcriptWriter.Write(sigma1Payload.GetBytes());
+                transcriptWriter.Write(sigma2Payload.GetBytes());
+                transcriptWriter.Write(sigma3Payload.GetBytes());
+
+                transcriptHash = SHA256.HashData(ms.ToArray());
+
+                //Console.WriteLine(format: "hash: {0}", BitConverter.ToString(transcriptHash).Replace("-", ""));
 
                 ms = new MemoryStream();
                 saltWriter = new BinaryWriter(ms);
                 saltWriter.Write(fabric.OperationalIPK);
-                saltWriter.Write(sigma1Payload.GetBytes());
-                saltWriter.Write(sigma2Payload.GetBytes());
-                saltWriter.Write(sigma3Payload.GetBytes());
+                saltWriter.Write(transcriptHash);
 
                 var secureSessionSalt = ms.ToArray();
 
+                //Console.WriteLine("sharedSecret: {0}", BitConverter.ToString(sharedSecret).Replace("-", ""));
+                //Console.WriteLine("salt: {0}", BitConverter.ToString(secureSessionSalt).Replace("-", ""));
+
                 hkdf = new HkdfBytesGenerator(new Sha256Digest());
-                hkdf.Init(new HkdfParameters(sharedSecret.ToByteArrayUnsigned(), secureSessionSalt, info));
+                hkdf.Init(new HkdfParameters(sharedSecret, secureSessionSalt, caseInfo));
 
                 var caseKeys = new byte[48];
                 hkdf.GenerateBytes(caseKeys, 0, 48);
-
-                Console.WriteLine("KcAB: {0}", BitConverter.ToString(keys));
 
                 encryptKey = caseKeys.AsSpan().Slice(0, 16).ToArray();
                 decryptKey = caseKeys.AsSpan().Slice(16, 16).ToArray();
                 attestationKey = caseKeys.AsSpan().Slice(32, 16).ToArray();
 
+                Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey).Replace("-", ""));
+                Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey).Replace("-", ""));
+                Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey).Replace("-", ""));
 
 
+
+                unsecureExchange.Close();
+                unsecureSession.Close();
+
+                Console.WriteLine("┌───────────────────────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 21 - CommissioningComplete |");
+                Console.WriteLine("└───────────────────────────────────────────────┘");
+
+                udpConnection = new UdpConnection();
                 var caseSession = new CaseSecureSession(udpConnection, sigma2ResponderSessionId, encryptKey, decryptKey);
 
                 // We then create a new Exchange using the secure session.
                 //
                 var caseExchange = caseSession.CreateExchange();
 
-
+                await caseExchange.AcknowledgeMessageAsync(successMessageFrame.MessageCounter);
 
 
                 var commissioningCompletePayload = new MatterTLV();
@@ -1343,13 +1366,13 @@ namespace Matter.Core.Commissioning
                 commissioningCompleteMessageFrame.SecurityFlags = 0x00;
                 commissioningCompleteMessageFrame.SourceNodeID = 0x00;
 
-                await caseExchange.SendAsync(commissioningCompleteMessageFrame);
+                //await caseExchange.SendAsync(commissioningCompleteMessageFrame);
 
-                var commissioningCompleteResponseMessageFrame = await caseExchange.WaitForNextMessageAsync();
+                //var commissioningCompleteResponseMessageFrame = await caseExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(commissioningCompleteMessageFrame.MessagePayload.ApplicationPayload);
+                //Console.WriteLine(commissioningCompleteMessageFrame.MessagePayload.ApplicationPayload);
 
-                await caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter);
+                //await caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter);
 
                 await Task.Delay(5000);
             }

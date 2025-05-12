@@ -7,6 +7,8 @@ namespace Matter.Core.Sessions
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
 
         public PaseSecureSession(IConnection connection, ushort sessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
@@ -19,6 +21,12 @@ namespace Matter.Core.Sessions
                 SessionId = sessionId;
                 Console.WriteLine($"Created PASE Secure Session: {SessionId}");
             }
+        }
+
+        public void Close()
+        {
+            _cancellationTokenSource.Cancel();
+            _connection.Close();
         }
 
         public ushort SessionId { get; }
@@ -40,7 +48,11 @@ namespace Matter.Core.Sessions
                 var exchangeId = trueRandom;
 
                 Console.WriteLine($"Created Exchange ID: {exchangeId}");
-                return new MessageExchange(exchangeId, this);
+                var exchange = new MessageExchange(exchangeId, this);
+
+                _exchanges.Add(exchange);
+
+                return exchange;
             }
         }
 
@@ -105,7 +117,7 @@ namespace Matter.Core.Sessions
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            Console.WriteLine("Decrypting MessagePayload...");
+            //Console.WriteLine("Decrypting MessagePayload...");
 
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);

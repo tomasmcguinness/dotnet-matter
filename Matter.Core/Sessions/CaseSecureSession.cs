@@ -21,6 +21,11 @@ namespace Matter.Core.Sessions
             }
         }
 
+        public void Close()
+        {
+            _connection.Close();
+        }
+
         public ushort SessionId { get; }
 
         public bool UseMRP => true;
@@ -105,7 +110,7 @@ namespace Matter.Core.Sessions
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            Console.WriteLine("Decrypting MessagePayload...");
+            //Console.WriteLine("Decrypting MessagePayload...");
 
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);

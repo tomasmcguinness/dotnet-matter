@@ -15,5 +15,7 @@
         Task<byte[]> ReadAsync();
 
         Task SendAsync(byte[] payload);
+
+        void Close();
     }
 }

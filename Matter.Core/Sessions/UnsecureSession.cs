@@ -6,12 +6,18 @@ namespace Matter.Core.Sessions
     {
         private IConnection _connection;
 
-        public UnsecureSession(IConnection connection)
+        public UnsecureSession(IConnection connection, ushort sessionId)
         {
             _connection = connection;
+            SessionId = sessionId;
         }
 
-        public ushort SessionId => 0;
+        public void Close()
+        {
+            _connection.Close();
+        }
+
+        public ushort SessionId { get; set; }
 
         public bool UseMRP => false;
 
@@ -30,7 +36,7 @@ namespace Matter.Core.Sessions
 
                 var exchangeId = trueRandom;
 
-                Console.WriteLine($"Created Exchange ID: {exchangeId}");
+                Console.WriteLine($"Created Unsecure Exchange ID: {exchangeId}");
 
                 return new MessageExchange(exchangeId, this);
             }

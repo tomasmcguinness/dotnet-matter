@@ -13,5 +13,10 @@ namespace Matter.Tests
         {
             return Task.CompletedTask;
         }
+
+        public void Close()
+        {
+            // Do nothing
+        }
     }
 }

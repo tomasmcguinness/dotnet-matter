@@ -48,7 +48,14 @@ namespace Matter.Core
                 index += securedExtensionsLength;
             }
 
-            ApplicationPayload = new MatterTLV(messagePayload.AsSpan().Slice(index).ToArray());
+            try
+            {
+                ApplicationPayload = new MatterTLV(messagePayload.AsSpan().Slice(index).ToArray());
+            }
+            catch (ArgumentOutOfRangeException exp)
+            {
+                Console.WriteLine("Error extracting ApplicationPayload from MessagePayload: {0}", ExchangeFlags);
+            }
         }
 
         public ExchangeFlags ExchangeFlags { get; set; }

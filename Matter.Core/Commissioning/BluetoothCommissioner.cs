@@ -101,7 +101,7 @@ namespace Matter.Core.Commissioning
 
                             // We start with an Unsecured Session.
                             //
-                            var unsecureSession = new UnsecureSession(_btpSession);
+                            var unsecureSession = new UnsecureSession(_btpSession, 0);
 
                             var unsecureExchange = unsecureSession.CreateExchange();
 

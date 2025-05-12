@@ -30,6 +30,12 @@ namespace Matter.Core.BTP
             _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
         }
 
+        public void Close()
+        {
+            _acknowledgementTimer.Dispose();
+            _device.Dispose();
+        }
+
         public async Task ListenForResponses()
         {
             try
