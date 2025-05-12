@@ -862,7 +862,7 @@ namespace Matter.Core.Commissioning
 
                 addNocRequest.AddOctetString(0, encodedPeerNocCertificate.GetBytes()); // NOCValue
                 addNocRequest.AddOctetString(2, fabric.IPK); // IPKValue
-                addNocRequest.AddUInt64(3, 2); // CaseAdminSubject - In this case a NodeId of 2.
+                addNocRequest.AddUInt64(3, fabric.RootNodeId.ToByteArrayUnsigned()); // CaseAdminSubject - In this case the RootNodeId.
                 addNocRequest.AddUInt16(4, fabric.AdminVendorId); // AdminVendorId
 
                 addNocRequest.EndContainer(); // Close the CommandFields
@@ -1351,11 +1351,13 @@ namespace Matter.Core.Commissioning
 
                 var commissioningCompleteResponseMessageFrame = await caseExchange.WaitForNextMessageAsync();
 
-                Console.WriteLine(commissioningCompleteMessageFrame.MessagePayload.ApplicationPayload);
-
                 await caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter);
 
                 await Task.Delay(5000);
+
+                Console.WriteLine("┌───────────────────────────────────────────────┐");
+                Console.WriteLine("| Commissioning of Node {0} is complete |", peerNodeId.LongValue);
+                Console.WriteLine("└───────────────────────────────────────────────┘");
             }
             catch (Exception exp)
             {
