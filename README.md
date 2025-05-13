@@ -25,6 +25,12 @@ The first step for my commissioner is to take the manual pairing code, parse it 
 > [!Note]
 > The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
 
+12/05/2025
+
+Successfully finished the Commissioning project by having a CommissioningComplete Command accepted by a matter.js example device! I've tagged the report with v0.1
+
+* https://tomasmcguinness.com/2025/05/12/building-a-net-matter-controller-commissioning-flow-commissioningcomplete/
+
 10/05/2025
 
 Created a CASE Secure Session today. This meant generating & handling the Sigma1, Sigma2 and Sigma3 messages! 
