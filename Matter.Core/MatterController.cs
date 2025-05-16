@@ -7,11 +7,12 @@ namespace Matter.Core
     {
         private Fabric _fabric;
         private Dictionary<int, ICommissioner> _commissioners;
+        private readonly IFabricStorageProvider _fabricStorageProvider;
 
-        public MatterController()
+        public MatterController(IFabricStorageProvider fabricStorageProvider)
         {
             _commissioners = new Dictionary<int, ICommissioner>();
-
+            _fabricStorageProvider = fabricStorageProvider;
         }
 
         public Task<ICommissioner> CreateCommissionerAsync()
@@ -28,9 +29,9 @@ namespace Matter.Core
             return Task.FromResult(commissioner);
         }
 
-        public void Init()
+        public async Task InitAsync()
         {
-            _fabric = Fabric.CreateNew("Test");
+            _fabric = await Fabric.GetAsync(_fabricStorageProvider, "Test");
         }
     }
 }

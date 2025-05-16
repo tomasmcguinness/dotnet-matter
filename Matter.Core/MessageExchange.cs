@@ -65,17 +65,11 @@ namespace Matter.Core
             //
             if (_acknowledgedMessageCounter != _receivedMessageCounter)
             {
-                //Console.WriteLine("Including Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
-
                 _acknowledgedMessageCounter = _receivedMessageCounter;
 
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
                 message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
                 messageToAck = _acknowledgedMessageCounter;
-            }
-            else
-            {
-                //Console.WriteLine("No unacknowledged message");
             }
 
             if (_session.UseMRP)

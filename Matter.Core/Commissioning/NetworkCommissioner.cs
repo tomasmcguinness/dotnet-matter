@@ -587,7 +587,7 @@ namespace Matter.Core.Commissioning
 
                 // Create a signature factory for the specified algorithm. Sign the cert with the RootCertificate PrivateyKey
                 //
-                ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", fabric.KeyPair.Private as ECPrivateKeyParameters);
+                ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", fabric.RootKeyPair.Private as ECPrivateKeyParameters);
                 var peerNoc = certGenerator.Generate(signatureFactory);
 
                 // Write the PEM out to disk
