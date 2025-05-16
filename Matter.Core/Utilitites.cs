@@ -22,7 +22,7 @@ namespace Matter.Core
         public static string DebugInfo(this MessageFrame message)
         {
             var (protocolName, protocolOpName) = GetFriendlyNames(message.MessagePayload);
-            return string.Format("{0} | {1} | {2}", message.MessageCounter, protocolName, protocolOpName);
+            return string.Format("{0} | {1} | {2} | ack:{3}", message.MessageCounter, protocolName, protocolOpName, message.MessagePayload.AcknowledgedMessageCounter);
         }
 
         public static string DebugInfo(this MessagePayload message)

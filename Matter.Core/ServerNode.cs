@@ -1,23 +1,21 @@
-﻿namespace Matter.Core
+﻿using System.Net.Sockets;
+
+namespace Matter.Core
 {
     public class ServerNode
     {
-        private UdpServer _listener;
+        private UdpClient _listener;
 
         public ServerNode()
         {
 
         }
 
-        public async Task StartAsync()
+        public void StartAsync()
         {
+            _listener = new UdpClient();
 
-            _listener = new UdpServer();
 
-            while (true) // Use a cancellation token?
-            {
-                var receivedData = await _listener.ReadAsync();
-            }
         }
     }
 }

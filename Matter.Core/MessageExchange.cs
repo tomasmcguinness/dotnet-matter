@@ -1,6 +1,5 @@
 ﻿using Matter.Core.Sessions;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Channels;
 
 namespace Matter.Core
@@ -115,7 +114,7 @@ namespace Matter.Core
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
                     {
-                        Debug.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
+                        Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
                         return;
                     }
 
@@ -166,11 +165,10 @@ namespace Matter.Core
             messageFrame.MessageFlags |= MessageFlags.S;
             messageFrame.SecurityFlags = 0x00;
             messageFrame.SessionID = _session.SessionId;
+            messageFrame.SourceNodeID = _session.SourceNodeId; 
             messageFrame.MessageCounter = GlobalCounter.Counter;
 
             await SendAsync(messageFrame);
-
-            Console.WriteLine("Sent Standalone Acknowledgement for MessageCounter {0}", _receivedMessageCounter);
         }
     }
 }

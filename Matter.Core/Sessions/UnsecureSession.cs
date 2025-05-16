@@ -12,6 +12,10 @@ namespace Matter.Core.Sessions
             SessionId = sessionId;
         }
 
+        public ulong SourceNodeId { get; } = 0x00;
+
+        public ulong DestinationNodeId { get; } = 0x00;
+
         public void Close()
         {
             _connection.Close();

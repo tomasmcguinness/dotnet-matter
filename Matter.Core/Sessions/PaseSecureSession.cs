@@ -23,6 +23,10 @@ namespace Matter.Core.Sessions
             }
         }
 
+        public ulong SourceNodeId { get; } = 0x00;
+
+        public ulong DestinationNodeId { get; } = 0x00;
+
         public void Close()
         {
             _cancellationTokenSource.Cancel();

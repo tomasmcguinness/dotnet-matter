@@ -2,6 +2,10 @@
 {
     public interface ISession
     {
+        ulong SourceNodeId { get; }
+
+        ulong DestinationNodeId { get; }
+
         ushort SessionId { get; }
 
         bool UseMRP { get; }

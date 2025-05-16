@@ -8,11 +8,19 @@ namespace Matter.Core.Sessions
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
 
-        public CaseSecureSession(IConnection connection, ushort sessionId, byte[] encryptionKey, byte[] decryptionKey)
+        public CaseSecureSession(IConnection connection,
+                                 ulong sourceNodeId,
+                                 ulong destinationNodeId,
+                                 ushort sessionId,
+                                 byte[] encryptionKey,
+                                 byte[] decryptionKey)
         {
             _connection = connection;
             _encryptionKey = encryptionKey;
             _decryptionKey = decryptionKey;
+
+            SourceNodeId = sourceNodeId;
+            DestinationNodeId = destinationNodeId;
 
             using (var rng = RandomNumberGenerator.Create())
             {
@@ -25,6 +33,10 @@ namespace Matter.Core.Sessions
         {
             _connection.Close();
         }
+
+        public ulong SourceNodeId { get; }
+
+        public ulong DestinationNodeId { get; }
 
         public ushort SessionId { get; }
 
@@ -118,11 +130,16 @@ namespace Matter.Core.Sessions
 
             nonceWriter.Write((byte)messageFrame.SecurityFlags);
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+
+            // We are receiving a message from the other node.
+            // The MessageFrame might not have the SourceNodeId in it, as its not always sent.
+            //
+            nonceWriter.Write(BitConverter.GetBytes(DestinationNodeId));
 
             var nonce = memoryStream.ToArray();
 
-            //Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
+            Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
+            Console.WriteLine("decryptionKey: {0}", BitConverter.ToString(_decryptionKey));
 
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
@@ -131,11 +148,11 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
             additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
 
             var additionalData = memoryStream.ToArray();
 
-            //Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
+            Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
 
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 
@@ -144,8 +161,6 @@ namespace Matter.Core.Sessions
 
             var encryptor = new AesCcm(_decryptionKey);
             encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
-
-            //Console.WriteLine("Decrypted MessagePayload: {0}", BitConverter.ToString(decryptedPayload));
 
             messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 
