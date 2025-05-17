@@ -13,6 +13,7 @@ using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.X509;
 using System.Security.Cryptography;
 using System.Text;
+using Matter.Core.Events;
 
 namespace Matter.Core.Fabrics
 {
@@ -41,6 +42,12 @@ namespace Matter.Core.Fabrics
         public X509Certificate OperationalCertificate { get; set; }
 
         public AsymmetricCipherKeyPair OperationalCertificateKeyPair { get; set; }
+
+        public List<Node> Nodes { get; } = new List<Node>();
+
+
+        public delegate void NodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args);
+        public event NodeAddedToFabric NodeAdded;
 
         public static async Task<Fabric> GetAsync(IFabricStorageProvider storageProvider, string fabricName)
         {
@@ -177,6 +184,19 @@ namespace Matter.Core.Fabrics
             var noc = certGenerator.Generate(signatureFactory);
 
             return (noc, keyPair);
+        }
+
+        internal async Task AddCommissionedNodeAsync(BigInteger peerNodeId, ECPublicKeyParameters nocPublicKey)
+        {
+            Nodes.Add(new Node()
+            {
+                NodeId = peerNodeId,
+            });
+
+            NodeAdded?.Invoke(this, new NodeAddedToFabricEventArgs()
+            {
+                NodeId = peerNodeId,
+            });
         }
     }
 }

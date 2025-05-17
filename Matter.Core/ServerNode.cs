@@ -14,8 +14,6 @@ namespace Matter.Core
         public void StartAsync()
         {
             _listener = new UdpClient();
-
-
         }
     }
 }

@@ -9,6 +9,8 @@ namespace Matter.Core
         private Dictionary<int, ICommissioner> _commissioners;
         private readonly IFabricStorageProvider _fabricStorageProvider;
 
+        public event IMatterController.MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
+
         public MatterController(IFabricStorageProvider fabricStorageProvider)
         {
             _commissioners = new Dictionary<int, ICommissioner>();
@@ -32,6 +34,15 @@ namespace Matter.Core
         public async Task InitAsync()
         {
             _fabric = await Fabric.GetAsync(_fabricStorageProvider, "Test");
+            _fabric.NodeAdded += OnNodeAddedToFabric;
+        }
+
+        private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)
+        {
+            MatterNodeAddedToFabricEvent?.Invoke(this, new Events.MatterNodeAddedToFabricEventArgs()
+            {
+                
+            });
         }
     }
 }

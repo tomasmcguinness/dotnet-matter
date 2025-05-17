@@ -9,8 +9,8 @@ IMatterController controller = new MatterController(fabricStorageProvider);
 
 await controller.InitAsync();
 
-//var commissioner = await controller.CreateCommissionerAsync();
+ICommissioner commissioner = await controller.CreateCommissionerAsync();
 
-//commissioner.CommissionDevice(3840);
+await commissioner.CommissionDeviceAsync(3840);
 
-//Console.WriteLine("Commissioning done (timed out or worked)");
+Console.WriteLine("Commissioning done (timed out or worked)");

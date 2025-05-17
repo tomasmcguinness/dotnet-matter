@@ -4,6 +4,6 @@
     {
         int Id { get; }
 
-        void CommissionDevice(int discriminator);
+        Task CommissionDeviceAsync(int discriminator);
     }
 }

@@ -1,17 +1,17 @@
-﻿using System.Runtime.InteropServices.WindowsRuntime;
+﻿//using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Channels;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Storage.Streams;
+//using Windows.Devices.Bluetooth;
+//using Windows.Devices.Bluetooth.GenericAttributeProfile;
+//using Windows.Storage.Streams;
 
 namespace Matter.Core.BTP
 {
     class BTPConnection : IConnection
     {
-        private readonly BluetoothLEDevice _device;
+        //private readonly BluetoothLEDevice _device;
         private readonly Timer _acknowledgementTimer;
-        private GattCharacteristic _readCharacteristic;
-        private GattCharacteristic _writeCharacteristic;
+        //private GattCharacteristic _readCharacteristic;
+        //private GattCharacteristic _writeCharacteristic;
         private SemaphoreSlim _writeCharacteristicLock = new SemaphoreSlim(1, 1);
         private ushort _currentAttSize;
         private uint _acknowledgedSequenceCount = 255;
@@ -19,16 +19,16 @@ namespace Matter.Core.BTP
         private uint _sentSequenceNumber = 0;
         private bool _isConnected;
 
-        private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
+        //private Channel<BTPFrame> _incomingFrameChannel = Channel.CreateBounded<BTPFrame>(5);
 
-        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
+        //private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
 
-        public BTPConnection(BluetoothLEDevice device)
-        {
-            _device = device;
-            _device.ConnectionStatusChanged += _device_ConnectionStatusChanged;
-            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
-        }
+        //public BTPConnection(BluetoothLEDevice device)
+        //{
+        //    _device = device;
+        //    _device.ConnectionStatusChanged += _device_ConnectionStatusChanged;
+        //    _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
+        //}
 
         public void Close()
         {

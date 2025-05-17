@@ -1362,6 +1362,8 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("| Commissioning of Node {0} is complete |", peerNodeId.LongValue);
                 Console.WriteLine("└───────────────────────────────────────────────┘");
 
+                await fabric.AddCommissionedNodeAsync(peerNodeId, nocPublicKey);
+
                 await Task.Delay(5000);
 
                 Console.WriteLine("┌─────────────────────┐");
@@ -1484,7 +1486,10 @@ namespace Matter.Core.Commissioning
     {
         private readonly Fabric _fabric;
         private readonly int _commissionerId;
-        private Thread _commissioningThread;
+        //private Thread _commissioningThread;
+
+        public delegate void CommissioningStepEventHandler(object sender, CommissioningStepEventArgs e);
+        public event CommissioningStepEventHandler ThresholdReached;
 
         public NetworkCommissioner(Fabric fabric)
         {
@@ -1494,7 +1499,7 @@ namespace Matter.Core.Commissioning
 
         public int Id => _commissionerId;
 
-        public void CommissionDevice(int discriminator)
+        public async Task CommissionDeviceAsync(int discriminator)
         {
             ManualResetEvent resetEvent = new ManualResetEvent(false);
 
@@ -1502,11 +1507,19 @@ namespace Matter.Core.Commissioning
             //
             var commissioningThread = new NetworkCommissioningThread(discriminator, resetEvent);
 
-            // Start the thread, passing the fabric as a parameter.
-            //
-            _commissioningThread = new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery));
-            _commissioningThread.Start(_fabric);
-            _commissioningThread.Join();
+            var commissioningTask = Task.Run(() =>
+            {
+                commissioningThread.PerformDiscovery(_fabric);
+                resetEvent.Set();
+            });
+
+            Task.WaitAll([commissioningTask], TimeSpan.FromSeconds(60));
+
+            //// Start the thread, passing the fabric as a parameter.
+            ////
+            //_commissioningThread = new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery));
+            //_commissioningThread.Start(_fabric);
+            //_commissioningThread.Join();
         }
     }
 }

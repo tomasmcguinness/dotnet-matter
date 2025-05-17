@@ -1,10 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <!--<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>-->
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="BTP\**" />
+    <EmbeddedResource Remove="BTP\**" />
+    <None Remove="BTP\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Commissioning\BluetoothCommissioner.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />

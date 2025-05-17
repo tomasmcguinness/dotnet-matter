@@ -23,11 +23,17 @@ namespace Matter.Core.Fabrics
         private class FabricDetails
         {
             public byte[] FabricId { get; set; }
+
             public byte[] RootCertificateId { get; set; }
+
             public byte[] RootNodeId { get; set; }
+
             public ushort AdminVendorId { get; set; }
+
             public byte[] IPK { get; set; }
+
             public byte[] OperationalIPK { get; set; }
+
             public byte[] RootKeyIdentifier { get; set; }
         }
 
@@ -55,10 +61,10 @@ namespace Matter.Core.Fabrics
                     fabric.FabricId = new BigInteger(details.FabricId);
                     fabric.RootCertificateId = new BigInteger(details.RootCertificateId);
                     fabric.RootNodeId = new BigInteger(details.RootNodeId);
-                    fabric.AdminVendorId = fabric.AdminVendorId;
-                    fabric.IPK = fabric.IPK;
-                    fabric.OperationalIPK = fabric.OperationalIPK;
-                    fabric.RootKeyIdentifier = fabric.RootKeyIdentifier;
+                    fabric.AdminVendorId = details.AdminVendorId;
+                    fabric.IPK = details.IPK;
+                    fabric.OperationalIPK = details.OperationalIPK;
+                    fabric.RootKeyIdentifier = details.RootKeyIdentifier;
                 }
                 else if (file.EndsWith("rootCertificate.pem"))
                 {
