@@ -5,6 +5,7 @@ namespace Matter.Core
 {
     public class MatterController : IMatterController
     {
+        private readonly FabricManager _fabricManager;
         private Fabric _fabric;
         private Dictionary<int, ICommissioner> _commissioners;
         private readonly IFabricStorageProvider _fabricStorageProvider;
@@ -13,6 +14,7 @@ namespace Matter.Core
 
         public MatterController(IFabricStorageProvider fabricStorageProvider)
         {
+            _fabricManager = new FabricManager(fabricStorageProvider);
             _commissioners = new Dictionary<int, ICommissioner>();
             _fabricStorageProvider = fabricStorageProvider;
         }
@@ -33,7 +35,7 @@ namespace Matter.Core
 
         public async Task InitAsync()
         {
-            _fabric = await Fabric.GetAsync(_fabricStorageProvider, "Test");
+            _fabric = await _fabricManager.GetAsync("Test");
             _fabric.NodeAdded += OnNodeAddedToFabric;
         }
 
@@ -41,8 +43,13 @@ namespace Matter.Core
         {
             MatterNodeAddedToFabricEvent?.Invoke(this, new Events.MatterNodeAddedToFabricEventArgs()
             {
-                
+
             });
+        }
+
+        public Task<IEnumerable<Node>> GetNodesAsync()
+        {
+            return Task.FromResult(_fabric.Nodes.AsEnumerable());
         }
     }
 }

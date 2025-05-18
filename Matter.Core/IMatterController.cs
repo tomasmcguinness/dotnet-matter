@@ -1,4 +1,5 @@
 ﻿using Matter.Core.Events;
+using Matter.Core.Fabrics;
 
 namespace Matter.Core
 {
@@ -10,5 +11,7 @@ namespace Matter.Core
         Task InitAsync();
 
         Task<ICommissioner> CreateCommissionerAsync();
+
+        Task<IEnumerable<Node>> GetNodesAsync();
     }
 }

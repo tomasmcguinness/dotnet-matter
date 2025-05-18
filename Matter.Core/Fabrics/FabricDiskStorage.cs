@@ -86,7 +86,16 @@ namespace Matter.Core.Fabrics
                     PemReader pemReader = new PemReader(new StreamReader(file));
                     fabric.OperationalCertificateKeyPair = pemReader.ReadObject() as AsymmetricCipherKeyPair;
                 }
+            }
 
+            var allDirectories = Directory.GetDirectories(GetFullPath(fabricName));
+
+            foreach (var directory in allDirectories)
+            {
+                var nodeId = new BigInteger(Path.GetFileName(directory));
+                var node = new Node();
+                node.NodeId = nodeId;
+                fabric.Nodes.Add(node);
             }
 
             return fabric;
@@ -134,11 +143,27 @@ namespace Matter.Core.Fabrics
             pemWriter.WriteObject(fabric.OperationalCertificateKeyPair);
             pemWriter.Writer.Flush();
             pemWriter.Writer.Close();
+
+            foreach (var node in fabric.Nodes)
+            {
+                // Create a directory for the node if necessary.
+                //
+                if (!Directory.Exists(GetFullPath(fabric.FabricName, node.NodeId)))
+                {
+                    Directory.CreateDirectory(GetFullPath(fabric.FabricName, node.NodeId));
+                }
+            }
         }
 
         private string GetFullPath(string fabricName)
         {
             var path = Path.Combine(_rootDirectory, fabricName);
+            return path;
+        }
+
+        private string GetFullPath(string fabricName, BigInteger nodeId)
+        {
+            var path = Path.Combine(_rootDirectory, fabricName, nodeId.ToString());
             return path;
         }
     }
