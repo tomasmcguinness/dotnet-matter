@@ -38,8 +38,10 @@ namespace Matter.Core.Fabrics
                 var rootCertificate = CertificateAuthority.GenerateRootCertificate(rootCertificateId, keyPair);
 
                 // TODO I'm doing this twice; here and in GenerateRootCertificate()
+                //
                 var publicKey = rootCertificate.GetPublicKey() as ECPublicKeyParameters;
-                var rootKeyIdentifier = SHA1.HashData(publicKey.Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
+                var publicKeyBytes = publicKey.Q.GetEncoded(false);
+                var rootKeyIdentifier = SHA1.HashData(publicKeyBytes).AsSpan().Slice(0, 20).ToArray();
 
                 // Also called the EpochKey
                 //
@@ -67,7 +69,10 @@ namespace Matter.Core.Fabrics
 
                 Console.WriteLine($"Fabric ID: {fabricId}");
                 Console.WriteLine($"IPK: {BitConverter.ToString(ipk).Replace("-", "")}");
-                Console.WriteLine($"CompressedFabricIdentifier: {BitConverter.ToString(compressedFabricIdentifier).Replace("-", "")}");
+
+                var compressedFabicIdentifier = BitConverter.ToString(compressedFabricIdentifier).Replace("-", "");
+
+                Console.WriteLine($"CompressedFabricIdentifier: {compressedFabicIdentifier}");
                 Console.WriteLine($"OperationalIPK: {BitConverter.ToString(operationalIPK).Replace("-", "")}");
 
                 var (noc, nocKeyPair) = Fabric.GenerateNOC(keyPair, rootKeyIdentifier);
@@ -86,6 +91,7 @@ namespace Matter.Core.Fabrics
                     OperationalIPK = operationalIPK,
                     OperationalCertificate = noc,
                     OperationalCertificateKeyPair = nocKeyPair,
+                    CompressedFabricId = compressedFabicIdentifier,
                 };
 
                 await _storageProvider.SaveFabricAsync(fabric);

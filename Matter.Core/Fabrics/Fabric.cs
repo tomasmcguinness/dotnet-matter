@@ -40,6 +40,7 @@ namespace Matter.Core.Fabrics
         public AsymmetricCipherKeyPair OperationalCertificateKeyPair { get; set; }
 
         public List<Node> Nodes { get; } = new List<Node>();
+        public string CompressedFabricId { get; internal set; }
 
         public delegate void NodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args);
         public event NodeAddedToFabric NodeAdded;

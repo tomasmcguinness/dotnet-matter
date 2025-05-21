@@ -42,7 +42,8 @@ namespace Matter.Core
             //
             foreach (var node in _fabric.Nodes)
             {
-                // Connecting to a node involved performing the CASE steps
+                // Connecting to a node first involves getting
+                // the IP address of the node and then performing the CASE steps
                 //
 
             }

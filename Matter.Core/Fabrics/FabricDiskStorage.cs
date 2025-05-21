@@ -35,6 +35,8 @@ namespace Matter.Core.Fabrics
             public byte[] OperationalIPK { get; set; }
 
             public byte[] RootKeyIdentifier { get; set; }
+
+            public string CompressedFabricId { get; set; }
         }
 
         public bool DoesFabricExist(string fabricName)
@@ -65,6 +67,7 @@ namespace Matter.Core.Fabrics
                     fabric.IPK = details.IPK;
                     fabric.OperationalIPK = details.OperationalIPK;
                     fabric.RootKeyIdentifier = details.RootKeyIdentifier;
+                    fabric.CompressedFabricId = details.CompressedFabricId;
                 }
                 else if (file.EndsWith("rootCertificate.pem"))
                 {
@@ -114,6 +117,7 @@ namespace Matter.Core.Fabrics
             details.IPK = fabric.IPK;
             details.OperationalIPK = fabric.OperationalIPK;
             details.RootKeyIdentifier = fabric.RootKeyIdentifier;
+            details.CompressedFabricId = fabric.CompressedFabricId;
 
             var json = JsonSerializer.Serialize(details, new JsonSerializerOptions { WriteIndented = true });
 
