@@ -159,7 +159,7 @@ namespace Matter.Core
             messageFrame.MessageFlags |= MessageFlags.S;
             messageFrame.SecurityFlags = 0x00;
             messageFrame.SessionID = _session.SessionId;
-            messageFrame.SourceNodeID = _session.SourceNodeId; 
+            messageFrame.SourceNodeID = _session.SourceNodeId;
             messageFrame.MessageCounter = GlobalCounter.Counter;
 
             await SendAsync(messageFrame);

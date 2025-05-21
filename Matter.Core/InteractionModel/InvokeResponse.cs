@@ -6,7 +6,7 @@ namespace Matter.Core.InteractionModel
     {
         public InvokeResponse(MatterTLV payload)
         {
-            
+
         }
 
         public bool SuppressResponse { get; }

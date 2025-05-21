@@ -1,7 +1,5 @@
-using Matter.Core.Cryptography;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Math;
-using System.Text;
 
 namespace Matter.Tests
 {

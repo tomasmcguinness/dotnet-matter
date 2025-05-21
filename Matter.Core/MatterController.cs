@@ -37,6 +37,15 @@ namespace Matter.Core
         {
             _fabric = await _fabricManager.GetAsync("Test");
             _fabric.NodeAdded += OnNodeAddedToFabric;
+
+            // Reconnect to the nodes.
+            //
+            foreach (var node in _fabric.Nodes)
+            {
+                // Connecting to a node involved performing the CASE steps
+                //
+
+            }
         }
 
         private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)
