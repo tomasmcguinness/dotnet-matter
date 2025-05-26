@@ -25,4 +25,8 @@
     <PackageReference Include="Zeroconf" Version="3.7.16" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\dotnet-mdns\Core\Core.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -5,6 +5,8 @@ namespace Matter.Core
     {
         void Close();
 
+        IConnection CreateNewConnection();
+
         Task<byte[]> ReadAsync();
 
         Task SendAsync(byte[] message);

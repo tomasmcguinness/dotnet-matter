@@ -18,5 +18,10 @@ namespace Matter.Tests
         {
             // Do nothing
         }
+
+        public IConnection CreateNewConnection()
+        {
+            return new FakeConnection();
+        }
     }
 }

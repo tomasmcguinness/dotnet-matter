@@ -34,6 +34,13 @@ namespace Matter.Core.Sessions
             _connection.Close();
         }
 
+        public IConnection CreateNewConnection()
+        {
+            return _connection.CreateNewConnection();
+        }
+
+        public IConnection Connection => _connection;
+
         public ulong SourceNodeId { get; }
 
         public ulong DestinationNodeId { get; }

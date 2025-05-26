@@ -12,6 +12,13 @@ namespace Matter.Core.Sessions
             SessionId = sessionId;
         }
 
+        public IConnection Connection => _connection;
+
+        public IConnection CreateNewConnection()
+        {
+            return _connection.CreateNewConnection();
+        }
+
         public ulong SourceNodeId { get; } = 0x00;
 
         public ulong DestinationNodeId { get; } = 0x00;
@@ -28,7 +35,9 @@ namespace Matter.Core.Sessions
         public MessageExchange CreateExchange()
         {
             // We're going to Exchange messages in this session, so we need an MessageExchange 
-            // to track it (4.10).
+            // to track it (4.10). 
+            //
+            // TODO Ensure the ExchangeId is unique!
             //
             var randomBytes = new byte[2];
 

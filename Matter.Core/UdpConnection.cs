@@ -10,17 +10,26 @@ namespace Matter.Core
         private Thread _readingThread;
         private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
         private CancellationTokenSource _cancellationTokenSource;
+        private IPAddress _ipAddress;
+        private ushort _port;
 
-        public UdpConnection()
+        public UdpConnection(IPAddress address, ushort port)
         {
+            _ipAddress = address;
+            _port = port;
+
             _cancellationTokenSource = new CancellationTokenSource();
 
             _udpClient = new UdpClient(0);
-            IPAddress address = IPAddress.Parse("127.0.0.1");
-            _udpClient.Connect(address, 5540); // Assume a fixed port until we have discovery in place.
+            _udpClient.Connect(address, port);
 
             _readingThread = new Thread(new ThreadStart(ReadAvailableData));
             _readingThread.Start();
+        }
+
+        public IConnection CreateNewConnection()
+        {
+            return new UdpConnection(_ipAddress, _port);
         }
 
         public void Close()

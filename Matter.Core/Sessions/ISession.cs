@@ -2,6 +2,8 @@
 {
     public interface ISession
     {
+        IConnection Connection { get; }
+
         ulong SourceNodeId { get; }
 
         ulong DestinationNodeId { get; }
@@ -21,5 +23,7 @@
         Task SendAsync(byte[] payload);
 
         void Close();
+
+        IConnection CreateNewConnection();
     }
 }

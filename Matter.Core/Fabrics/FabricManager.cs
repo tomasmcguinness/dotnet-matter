@@ -83,9 +83,9 @@ namespace Matter.Core.Fabrics
                     FabricName = fabricName,
                     RootNodeId = rootNodeId,
                     AdminVendorId = 0xFFF1, // Default value from Matter specification 
-                    RootKeyPair = keyPair,
-                    RootCertificateId = rootCertificateId,
-                    RootCertificate = rootCertificate,
+                    RootCAKeyPair = keyPair,
+                    RootCACertificateId = rootCertificateId,
+                    RootCACertificate = rootCertificate,
                     RootKeyIdentifier = rootKeyIdentifier,
                     IPK = ipk,
                     OperationalIPK = operationalIPK,

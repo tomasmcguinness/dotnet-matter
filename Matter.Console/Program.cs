@@ -11,6 +11,6 @@ await controller.InitAsync();
 
 ICommissioner commissioner = await controller.CreateCommissionerAsync();
 
-await commissioner.CommissionDeviceAsync(3840);
+await commissioner.CommissionNodeAsync(3840);
 
 Console.WriteLine("Commissioning done (timed out or worked)");

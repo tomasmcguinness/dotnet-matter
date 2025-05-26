@@ -15,11 +15,11 @@ namespace Matter.Core.Fabrics
 {
     public class Fabric
     {
-        public AsymmetricCipherKeyPair RootKeyPair { get; set; }
+        public AsymmetricCipherKeyPair RootCAKeyPair { get; set; }
 
-        public BigInteger RootCertificateId { get; set; }
+        public BigInteger RootCACertificateId { get; set; }
 
-        public X509Certificate RootCertificate { get; set; }
+        public X509Certificate RootCACertificate { get; set; }
 
         public byte[] IPK { get; set; }
 
@@ -40,7 +40,17 @@ namespace Matter.Core.Fabrics
         public AsymmetricCipherKeyPair OperationalCertificateKeyPair { get; set; }
 
         public List<Node> Nodes { get; } = new List<Node>();
-        public string CompressedFabricId { get; internal set; }
+
+        public string CompressedFabricId { get; set; }
+
+        public byte[] RootPublicKeyBytes
+        {
+            get
+            {
+                var publicKey = RootCAKeyPair.Public as ECPublicKeyParameters;
+                return publicKey!.Q.GetEncoded(false);
+            }
+        }
 
         public delegate void NodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args);
         public event NodeAddedToFabric NodeAdded;
@@ -105,17 +115,32 @@ namespace Matter.Core.Fabrics
             return (noc, keyPair);
         }
 
-        internal async Task AddCommissionedNodeAsync(BigInteger peerNodeId, ECPublicKeyParameters nocPublicKey)
+        internal async Task AddCommissionedNodeAsync(BigInteger peerNodeId, System.Net.IPAddress address, ushort port)
         {
             Nodes.Add(new Node()
             {
                 NodeId = peerNodeId,
+                LastKnownIpAddress = address,
+                LastKnownPort = port,
             });
 
             NodeAdded?.Invoke(this, new NodeAddedToFabricEventArgs()
             {
                 NodeId = peerNodeId,
             });
+        }
+
+        internal Node CreateNode()
+        {
+            // TODO Unique ID for each node!
+            //
+            var nodeIdBytes = "ABABABAB00010001".ToByteArray();
+            var nodeId = new BigInteger(nodeIdBytes, false);
+
+            return new Node()
+            {
+                NodeId = nodeId
+            };
         }
     }
 }

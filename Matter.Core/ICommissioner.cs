@@ -4,6 +4,6 @@
     {
         int Id { get; }
 
-        Task CommissionDeviceAsync(int discriminator);
+        Task CommissionNodeAsync(int discriminator);
     }
 }

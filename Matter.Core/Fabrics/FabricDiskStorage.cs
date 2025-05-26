@@ -61,7 +61,7 @@ namespace Matter.Core.Fabrics
                     var details = JsonSerializer.Deserialize<FabricDetails>(fileBytes);
 
                     fabric.FabricId = new BigInteger(details.FabricId);
-                    fabric.RootCertificateId = new BigInteger(details.RootCertificateId);
+                    fabric.RootCACertificateId = new BigInteger(details.RootCertificateId);
                     fabric.RootNodeId = new BigInteger(details.RootNodeId);
                     fabric.AdminVendorId = details.AdminVendorId;
                     fabric.IPK = details.IPK;
@@ -72,12 +72,12 @@ namespace Matter.Core.Fabrics
                 else if (file.EndsWith("rootCertificate.pem"))
                 {
                     PemReader pemReader = new PemReader(new StreamReader(file));
-                    fabric.RootCertificate = pemReader.ReadObject() as X509Certificate;
+                    fabric.RootCACertificate = pemReader.ReadObject() as X509Certificate;
                 }
                 else if (file.EndsWith("rootKeyPair.pem"))
                 {
                     PemReader pemReader = new PemReader(new StreamReader(file));
-                    fabric.RootKeyPair = pemReader.ReadObject() as AsymmetricCipherKeyPair;
+                    fabric.RootCAKeyPair = pemReader.ReadObject() as AsymmetricCipherKeyPair;
                 }
                 else if (file.EndsWith("operationalCertificate.pem"))
                 {
@@ -111,7 +111,7 @@ namespace Matter.Core.Fabrics
             var details = new FabricDetails();
 
             details.FabricId = fabric.FabricId.ToByteArray();
-            details.RootCertificateId = fabric.RootCertificateId.ToByteArray();
+            details.RootCertificateId = fabric.RootCACertificateId.ToByteArray();
             details.RootNodeId = fabric.RootNodeId.ToByteArray();
             details.AdminVendorId = fabric.AdminVendorId;
             details.IPK = fabric.IPK;
@@ -129,12 +129,12 @@ namespace Matter.Core.Fabrics
             await File.WriteAllTextAsync(Path.Combine(_rootDirectory, fabric.FabricName, "fabric.json"), json);
 
             PemWriter pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "rootCertificate.pem")));
-            pemWriter.WriteObject(fabric.RootCertificate);
+            pemWriter.WriteObject(fabric.RootCACertificate);
             pemWriter.Writer.Flush();
             pemWriter.Writer.Close();
 
             pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "rootKeyPair.pem")));
-            pemWriter.WriteObject(fabric.RootKeyPair);
+            pemWriter.WriteObject(fabric.RootCAKeyPair);
             pemWriter.Writer.Flush();
             pemWriter.Writer.Close();
 

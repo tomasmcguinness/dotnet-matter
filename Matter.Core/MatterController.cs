@@ -1,4 +1,5 @@
-﻿using Matter.Core.Commissioning;
+﻿using mDNS.Core;
+using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
 
 namespace Matter.Core
@@ -9,6 +10,7 @@ namespace Matter.Core
         private Fabric _fabric;
         private Dictionary<int, ICommissioner> _commissioners;
         private readonly IFabricStorageProvider _fabricStorageProvider;
+        private readonly mDNSService _mDNSService;
 
         public event IMatterController.MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
 
@@ -17,6 +19,7 @@ namespace Matter.Core
             _fabricManager = new FabricManager(fabricStorageProvider);
             _commissioners = new Dictionary<int, ICommissioner>();
             _fabricStorageProvider = fabricStorageProvider;
+            //_mDNSService = new mDNSService();
         }
 
         public Task<ICommissioner> CreateCommissionerAsync()
@@ -38,14 +41,26 @@ namespace Matter.Core
             _fabric = await _fabricManager.GetAsync("Test");
             _fabric.NodeAdded += OnNodeAddedToFabric;
 
+            //_mDNSService.RecordDiscovered += (object sender, Record[] record) =>
+            //{
+            //    foreach (var item in record)
+            //    {
+            //        Console.WriteLine("Found: {0}", item.Name);
+            //    }
+            //};
+
             // Reconnect to the nodes.
             //
             foreach (var node in _fabric.Nodes)
             {
-                // Connecting to a node first involves getting
-                // the IP address of the node and then performing the CASE steps
-                //
+                node.Connect();
 
+                //    // Connecting to a node first involves getting
+                //    // the IP address of the node and then performing the CASE steps
+                //    //
+                //    var nodeName = $"{_fabric.CompressedFabricId}-{node.NodeName}._matter._tcp.local";
+
+                //    await _mDNSService.Perform(new Discovery(nodeName));
             }
         }
 
