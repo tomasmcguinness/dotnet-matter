@@ -2,6 +2,7 @@
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.X509;
+using System.Net;
 using System.Text.Json;
 
 namespace Matter.Core.Fabrics
@@ -37,6 +38,15 @@ namespace Matter.Core.Fabrics
             public byte[] RootKeyIdentifier { get; set; }
 
             public string CompressedFabricId { get; set; }
+        }
+
+        private class NodeDetails
+        {
+            public byte[] NodeId { get; set; }
+
+            public string LastKnownIPAddress { get; set; }
+
+            public ushort LastKnownPort { get; set; }
         }
 
         public bool DoesFabricExist(string fabricName)
@@ -96,9 +106,24 @@ namespace Matter.Core.Fabrics
             foreach (var directory in allDirectories)
             {
                 var nodeId = new BigInteger(Path.GetFileName(directory));
-                var node = new Node();
-                node.NodeId = nodeId;
-                fabric.Nodes.Add(node);
+
+                var nodeFiles = Directory.GetFiles(directory);
+
+                foreach (var file in nodeFiles)
+                {
+                    if (file.EndsWith("node.json"))
+                    {
+                        var fileBytes = await File.ReadAllBytesAsync(file);
+                        var details = JsonSerializer.Deserialize<NodeDetails>(fileBytes);
+
+                        var node = new Node();
+                        node.NodeId = nodeId;
+                        node.LastKnownIpAddress = IPAddress.Parse(details.LastKnownIPAddress);
+                        node.LastKnownPort = details.LastKnownPort;
+
+                        fabric.AddNode(node);
+                    }
+                }
             }
 
             return fabric;
@@ -152,10 +177,22 @@ namespace Matter.Core.Fabrics
             {
                 // Create a directory for the node if necessary.
                 //
-                if (!Directory.Exists(GetFullPath(fabric.FabricName, node.NodeId)))
+                var nodeDirectoryPath = GetFullPath(fabric.FabricName, node.NodeId);
+
+                if (!Directory.Exists(nodeDirectoryPath))
                 {
-                    Directory.CreateDirectory(GetFullPath(fabric.FabricName, node.NodeId));
+                    Directory.CreateDirectory(nodeDirectoryPath);
                 }
+
+                var nodeDetails = new NodeDetails();
+
+                nodeDetails.NodeId = node.NodeId.ToByteArray();
+                nodeDetails.LastKnownIPAddress = node.LastKnownIpAddress.ToString();
+                nodeDetails.LastKnownPort = node.LastKnownPort;
+
+                var nodeJson = JsonSerializer.Serialize(nodeDetails, new JsonSerializerOptions { WriteIndented = true });
+
+                await File.WriteAllTextAsync(Path.Combine(nodeDirectoryPath, "node.json"), nodeJson);
             }
         }
 

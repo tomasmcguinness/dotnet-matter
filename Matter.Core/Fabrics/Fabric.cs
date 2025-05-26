@@ -142,5 +142,11 @@ namespace Matter.Core.Fabrics
                 NodeId = nodeId
             };
         }
+
+        internal void AddNode(Node node)
+        {
+            node.Fabric = this;
+            Nodes.Add(node);
+        }
     }
 }

@@ -2,15 +2,17 @@
 using Matter.Core.Fabrics;
 
 Console.WriteLine("dotnet-matter >> Console Application");
-Console.WriteLine("Attempting to commission a Matter device");
+
 
 IFabricStorageProvider fabricStorageProvider = new FabricDiskStorage("H:\\fabrics");
 IMatterController controller = new MatterController(fabricStorageProvider);
 
 await controller.InitAsync();
 
-ICommissioner commissioner = await controller.CreateCommissionerAsync();
+//Console.WriteLine("Attempting to commission a Matter device");
 
-await commissioner.CommissionNodeAsync(3840);
+//ICommissioner commissioner = await controller.CreateCommissionerAsync();
 
-Console.WriteLine("Commissioning done (timed out or worked)");
+//await commissioner.CommissionNodeAsync(3840);
+
+//Console.WriteLine("Commissioning done (timed out or worked)");

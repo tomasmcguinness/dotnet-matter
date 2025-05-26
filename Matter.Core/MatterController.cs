@@ -53,7 +53,9 @@ namespace Matter.Core
             //
             foreach (var node in _fabric.Nodes)
             {
-                node.Connect();
+                // Run these in parallel.
+                //
+                await node.Connect();
 
                 //    // Connecting to a node first involves getting
                 //    // the IP address of the node and then performing the CASE steps
