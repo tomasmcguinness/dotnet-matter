@@ -8,6 +8,9 @@ namespace Matter.Core
         delegate void MatterNodeAddedToFabric(object sender, MatterNodeAddedToFabricEventArgs e);
         event MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
 
+        delegate void ReconnectedToNode(object sender, Node node);
+        event ReconnectedToNode ReconnectedToNodeEvent;
+
         Task InitAsync();
 
         Task<ICommissioner> CreateCommissionerAsync();

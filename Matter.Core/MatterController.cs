@@ -7,18 +7,18 @@ namespace Matter.Core
     public class MatterController : IMatterController
     {
         private readonly FabricManager _fabricManager;
-        private Fabric _fabric;
-        private Dictionary<int, ICommissioner> _commissioners;
-        private readonly IFabricStorageProvider _fabricStorageProvider;
         private readonly mDNSService _mDNSService;
 
+        private Fabric _fabric;
+        private Dictionary<int, ICommissioner> _commissioners;
+
+        public event IMatterController.ReconnectedToNode ReconnectedToNodeEvent;
         public event IMatterController.MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
 
         public MatterController(IFabricStorageProvider fabricStorageProvider)
         {
             _fabricManager = new FabricManager(fabricStorageProvider);
             _commissioners = new Dictionary<int, ICommissioner>();
-            _fabricStorageProvider = fabricStorageProvider;
             //_mDNSService = new mDNSService();
         }
 
@@ -57,12 +57,7 @@ namespace Matter.Core
                 //
                 await node.Connect();
 
-                //    // Connecting to a node first involves getting
-                //    // the IP address of the node and then performing the CASE steps
-                //    //
-                //    var nodeName = $"{_fabric.CompressedFabricId}-{node.NodeName}._matter._tcp.local";
-
-                //    await _mDNSService.Perform(new Discovery(nodeName));
+                ReconnectedToNodeEvent?.Invoke(this, node);
             }
         }
 
