@@ -1,16 +1,12 @@
-﻿using Org.BouncyCastle.Utilities;
-using System.Net.NetworkInformation;
-using System.Text.RegularExpressions;
-
-namespace Matter.Core.Commissioning
+﻿namespace Matter.Core.Commissioning
 {
     public class CommissioningPayloadHelper
     {
         public CommissioningPayload ParseManualSetupCode(string manualSetupCode)
         {
-            if (manualSetupCode.Length != 11 && manualSetupCode.Length != 21)
+            if (manualSetupCode.Length != 11)
             {
-                throw new ArgumentException("Manual setup code must be 11 or 21 characters long.");
+                throw new ArgumentException("Manual setup code must be 11 digits long.");
             }
 
             var isValid = Verhoeff.validateVerhoeff(manualSetupCode);
