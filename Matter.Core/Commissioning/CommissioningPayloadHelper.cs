@@ -13,6 +13,13 @@ namespace Matter.Core.Commissioning
                 throw new ArgumentException("Manual setup code must be 11 or 21 characters long.");
             }
 
+            var isValid = Verhoeff.validateVerhoeff(manualSetupCode);
+
+            if(!isValid)
+            {
+                throw new ArgumentException("Manual setup code failed checksum.");
+            }
+
             byte byte1 = byte.Parse(manualSetupCode.Substring(0, 1));
 
             ushort discriminator = (ushort)(byte1 << 10);
@@ -21,9 +28,16 @@ namespace Matter.Core.Commissioning
 
             discriminator |= (ushort)((byte2to6 & 0xC000) >> 6);
 
+            uint passcode = (uint)(byte2to6 & 0x3FFF);
+
+            ushort byte7to10 = ushort.Parse(manualSetupCode.Substring(6, 4));
+
+            passcode |= (uint)(byte7to10 << 14);
+
             return new CommissioningPayload()
             {
-                Discriminator = discriminator
+                Discriminator = discriminator,
+                Passcode = passcode
             };
         }
 
