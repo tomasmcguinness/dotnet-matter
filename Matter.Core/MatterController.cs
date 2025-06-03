@@ -53,8 +53,6 @@ namespace Matter.Core
             //
             foreach (var node in _fabric.Nodes)
             {
-                // Run these in parallel.
-                //
                 await node.Connect();
 
                 ReconnectedToNodeEvent?.Invoke(this, node);

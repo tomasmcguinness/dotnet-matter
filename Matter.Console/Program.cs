@@ -3,7 +3,6 @@ using Matter.Core.Fabrics;
 
 Console.WriteLine("dotnet-matter >> Console Application");
 
-
 IFabricStorageProvider fabricStorageProvider = new FabricDiskStorage("H:\\fabrics");
 IMatterController controller = new MatterController(fabricStorageProvider);
 
