@@ -18,6 +18,8 @@ namespace Matter.Core
 
         public event EventHandler ConnectionClosed;
 
+        public SemaphoreSlim AcknowledgementReceived { get; init; } = new SemaphoreSlim(0);
+
         public UdpConnection(IPAddress address, ushort port)
         {
             _ipAddress = address;
@@ -68,29 +70,6 @@ namespace Matter.Core
             }
         }
 
-        //private async void DataReceived(IAsyncResult ar)
-        //{
-        //    try
-        //    {
-        //        var bytes = _udpClient!.EndReceive(ar, ref _Endpoint);
-
-        //        Console.WriteLine("UdpConnection: Received {0} bytes from {1}:{2}", bytes.Length, _Endpoint!.Address, _Endpoint!.Port);
-
-        //        await _receivedDataChannel.Writer.WriteAsync(bytes);
-
-        //        _udpClient.BeginReceive(_ReceiveCallback = (ar) => DataReceived(ar), null);
-        //    }
-        //    catch
-        //    {
-        //        _cancellationTokenSource.Cancel();
-
-        //        _udpClient?.Close();
-        //        _udpClient = null;
-
-        //        ConnectionClosed?.Invoke(this, EventArgs.Empty);
-        //    }
-        //}
-
         public async Task<byte[]> ReadAsync()
         {
             return await _receivedDataChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
@@ -99,6 +78,10 @@ namespace Matter.Core
         public async Task SendAsync(byte[] bytes)
         {
             await _udpClient!.SendAsync(bytes, _cancellationTokenSource.Token);
+
+            // TODO Ensure we get an acknowledgement of the frame we just sent!
+            //
+            //await AcknowledgementReceived.WaitAsync();
         }
     }
 }

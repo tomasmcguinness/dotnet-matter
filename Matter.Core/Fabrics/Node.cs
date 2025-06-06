@@ -20,5 +20,39 @@ namespace Matter.Core
         public Fabric Fabric { get; set; }
 
         public bool IsConnected { get; set; }
+
+        public async Task Connect(INodeRegister nodeRegister)
+        {
+            try
+            {
+                IPAddress? ipAddress = null; //LastKnownIpAddress;
+                ushort? port = null; //LastKnownPort;
+
+                var addresses = nodeRegister.GetCommissionedNodeAddresses(Fabric.GetFullNodeName(this));
+
+                if (addresses.Count() == 0)
+                {
+                    IsConnected = false;
+                    return;
+                }
+
+                var connection = new UdpConnection(ipAddress!, port!.Value);
+
+                var unsecureSession = new UnsecureSession(connection);
+
+                CASEClient client = new CASEClient(this, this.Fabric, unsecureSession);
+
+                var _secureSession = await client.EstablishSessionAsync();
+
+                this.IsConnected = true;
+
+                Console.WriteLine($"Established secure session to node {this.NodeId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to establish connection to node {this.NodeId}: {ex.Message}");
+                this.IsConnected = false;
+            }
+        }
     }
 }
