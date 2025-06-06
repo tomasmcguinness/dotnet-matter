@@ -4,6 +4,8 @@ namespace Matter.Tests
 {
     internal class FakeConnection : IConnection
     {
+        public event EventHandler ConnectionClosed;
+
         public Task<byte[]> ReadAsync()
         {
             return Task.FromResult(new byte[0]);
@@ -19,7 +21,7 @@ namespace Matter.Tests
             // Do nothing
         }
 
-        public IConnection CreateNewConnection()
+        public IConnection OpenConnection()
         {
             return new FakeConnection();
         }

@@ -148,5 +148,10 @@ namespace Matter.Core.Fabrics
             node.Fabric = this;
             Nodes.Add(node);
         }
+
+        public string GetFullNodeName(Node node)
+        {
+            return $"{node.NodeId}-{CompressedFabricId}";
+        }
     }
 }

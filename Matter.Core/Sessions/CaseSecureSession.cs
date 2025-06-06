@@ -36,7 +36,7 @@ namespace Matter.Core.Sessions
 
         public IConnection CreateNewConnection()
         {
-            return _connection.CreateNewConnection();
+            return _connection.OpenConnection();
         }
 
         public IConnection Connection => _connection;
@@ -54,18 +54,17 @@ namespace Matter.Core.Sessions
             // We're going to Exchange messages in this session, so we need an MessageExchange 
             // to track it (4.10).
             //
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                var randomBytes = new byte[2];
+            using var rng = RandomNumberGenerator.Create();
 
-                rng.GetBytes(randomBytes);
-                ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
+            var randomBytes = new byte[2];
 
-                var exchangeId = trueRandom;
+            rng.GetBytes(randomBytes);
+            ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
 
-                Console.WriteLine($"Created Exchange ID: {exchangeId}");
-                return new MessageExchange(exchangeId, this);
-            }
+            var exchangeId = trueRandom;
+
+            Console.WriteLine($"Created Exchange ID: {exchangeId}");
+            return new MessageExchange(exchangeId, this);
         }
 
         public async Task SendAsync(byte[] message)

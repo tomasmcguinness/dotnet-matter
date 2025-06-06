@@ -8,6 +8,8 @@ IMatterController controller = new MatterController(fabricStorageProvider);
 
 await controller.InitAsync();
 
+await controller.RunAsync();
+
 //Console.WriteLine("Attempting to commission a Matter device");
 
 //ICommissioner commissioner = await controller.CreateCommissionerAsync();

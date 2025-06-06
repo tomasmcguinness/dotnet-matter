@@ -187,8 +187,8 @@ namespace Matter.Core.Fabrics
                 var nodeDetails = new NodeDetails();
 
                 nodeDetails.NodeId = node.NodeId.ToByteArray();
-                nodeDetails.LastKnownIPAddress = node.LastKnownIpAddress.ToString();
-                nodeDetails.LastKnownPort = node.LastKnownPort;
+                nodeDetails.LastKnownIPAddress = node.LastKnownIpAddress!.ToString();
+                nodeDetails.LastKnownPort = node.LastKnownPort!.Value;
 
                 var nodeJson = JsonSerializer.Serialize(nodeDetails, new JsonSerializerOptions { WriteIndented = true });
 

@@ -13,8 +13,6 @@ namespace Matter.Core
         private uint _receivedMessageCounter = 255;
         private uint _acknowledgedMessageCounter = 255;
 
-        private readonly Timer _acknowledgementTimer;
-
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(1);
@@ -25,8 +23,6 @@ namespace Matter.Core
         {
             _exchangeId = exchangeId;
             _session = session;
-
-            //_acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 5000, 5000);
 
             _readingThread = new Thread(new ThreadStart(ReceiveAsync));
             _readingThread.Start();
@@ -39,16 +35,6 @@ namespace Matter.Core
 
             Console.WriteLine("Closed MessageExchange {0}", _exchangeId);
         }
-
-        //private async void SendStandaloneAcknowledgement(object? state)
-        //{
-        //    if (_acknowledgedMessageCounter != _receivedMessageCounter)
-        //    {
-        //        _acknowledgedMessageCounter = _receivedMessageCounter;
-
-        //        await AcknowledgeMessageAsync(_acknowledgedMessageCounter);
-        //    }
-        //}
 
         public async Task SendAsync(MessageFrame message)
         {
@@ -86,8 +72,7 @@ namespace Matter.Core
 
         public async Task<MessageFrame> WaitForNextMessageAsync()
         {
-            Debug.WriteLine("Waiting for incoming message...");
-
+            Console.WriteLine("Waiting for incoming message...");
             return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
         }
 
@@ -112,15 +97,7 @@ namespace Matter.Core
                         return;
                     }
 
-                    //if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Reliability) != 0)
-                    //{
                     _receivedMessageCounter = messageFrame.MessageCounter;
-                    //}
-
-                    //if ((messageFrame.MessagePayload.ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
-                    //{
-                    //    Console.WriteLine("Received Message acknowledges outgoing message {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
-                    //}
 
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     //
@@ -140,6 +117,8 @@ namespace Matter.Core
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Failed to read incoming message: {0}: [{1}]", ex.Message, BitConverter.ToString(bytes));
                     Console.ForegroundColor = ConsoleColor.White;
+
+                    break;
                 }
 
             } while (!_cancellationTokenSource.Token.IsCancellationRequested);

@@ -16,5 +16,7 @@ namespace Matter.Core
         Task<ICommissioner> CreateCommissionerAsync();
 
         Task<IEnumerable<Node>> GetNodesAsync();
+
+        Task RunAsync();
     }
 }

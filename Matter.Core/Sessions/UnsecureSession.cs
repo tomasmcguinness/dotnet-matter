@@ -6,17 +6,17 @@ namespace Matter.Core.Sessions
     {
         private IConnection _connection;
 
-        public UnsecureSession(IConnection connection, ushort sessionId)
+        public UnsecureSession(IConnection connection)
         {
             _connection = connection;
-            SessionId = sessionId;
+            SessionId = 0;
         }
 
         public IConnection Connection => _connection;
 
         public IConnection CreateNewConnection()
         {
-            return _connection.CreateNewConnection();
+            return _connection.OpenConnection();
         }
 
         public ulong SourceNodeId { get; } = 0x00;

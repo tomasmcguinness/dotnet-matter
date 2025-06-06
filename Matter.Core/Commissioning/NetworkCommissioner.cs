@@ -23,9 +23,11 @@ namespace Matter.Core.Commissioning
 {
     internal class NetworkCommissioningThreadState
     {
-        public System.Net.IPAddress IPAddress { get; internal set; }
-        public ushort Port { get; internal set; }
-        public Node Node { get; internal set; }
+        public System.Net.IPAddress IPAddress { get; set; }
+
+        public ushort Port { get; set; }
+
+        public Node Node { get; set; }
     }
 
     internal class NetworkCommissioningThread
@@ -54,7 +56,7 @@ namespace Matter.Core.Commissioning
 
                 Console.WriteLine("UDP Connection has been established. Starting PASE Exchange....");
 
-                UnsecureSession unsecureSession = new UnsecureSession(udpConnection, 0);
+                UnsecureSession unsecureSession = new UnsecureSession(udpConnection);
 
                 var unsecureExchange = unsecureSession.CreateExchange();
 
@@ -963,59 +965,109 @@ namespace Matter.Core.Commissioning
 
                 await Task.Delay(5000);
 
-                Console.WriteLine("┌─────────────────────┐");
-                Console.WriteLine("| Let there be light! |");
-                Console.WriteLine("└─────────────────────┘");
+                //Console.WriteLine("┌──────────────────┐");
+                //Console.WriteLine("| Fetching details |");
+                //Console.WriteLine("└──────────────────┘");
 
-                caseExchange = caseSession.CreateExchange();
+                //caseExchange = caseSession.CreateExchange();
 
-                var onCommandPayload = new MatterTLV();
-                onCommandPayload.AddStructure();
-                onCommandPayload.AddBool(0, false);
-                onCommandPayload.AddBool(1, false);
-                onCommandPayload.AddArray(tagNumber: 2); // InvokeRequests
+                //var onCommandPayload = new MatterTLV();
+                //onCommandPayload.AddStructure();
+                //onCommandPayload.AddBool(0, false);
+                //onCommandPayload.AddBool(1, false);
+                //onCommandPayload.AddArray(tagNumber: 2); // InvokeRequests
 
-                onCommandPayload.AddStructure();
+                //onCommandPayload.AddStructure();
 
-                onCommandPayload.AddList(tagNumber: 0); // CommandPath
+                //onCommandPayload.AddList(tagNumber: 0); // CommandPath
 
-                onCommandPayload.AddUInt16(tagNumber: 0, 0x01); // Endpoint 0x01
-                onCommandPayload.AddUInt32(tagNumber: 1, 0x06); // ClusterId 0x06 - OnOff
-                onCommandPayload.AddUInt16(tagNumber: 2, 0x01); // 1.5.7 Command On
+                //onCommandPayload.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x01
+                //onCommandPayload.AddUInt32(tagNumber: 1, 0x06); // ClusterId 0x06 - OnOff
+                //onCommandPayload.AddUInt16(tagNumber: 2, 0x01); // 1.5.7 Command On
 
-                onCommandPayload.EndContainer();
+                //onCommandPayload.EndContainer();
 
-                onCommandPayload.AddStructure(1); // CommandFields
-                onCommandPayload.EndContainer(); // Close the CommandFields
+                //onCommandPayload.AddStructure(1); // CommandFields
+                //onCommandPayload.EndContainer(); // Close the CommandFields
 
-                onCommandPayload.EndContainer(); // Close the structure
+                //onCommandPayload.EndContainer(); // Close the structure
 
-                onCommandPayload.EndContainer(); // Close the array
+                //onCommandPayload.EndContainer(); // Close the array
 
-                onCommandPayload.AddUInt8(255, 12); // interactionModelRevision
+                //onCommandPayload.AddUInt8(255, 12); // interactionModelRevision
 
-                onCommandPayload.EndContainer(); // Close the structure
+                //onCommandPayload.EndContainer(); // Close the structure
 
-                var onCommandPayloadMessagePayload = new MessagePayload(onCommandPayload);
+                //var onCommandPayloadMessagePayload = new MessagePayload(onCommandPayload);
 
-                onCommandPayloadMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+                //onCommandPayloadMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
 
-                // Table 14. Protocol IDs for the Matter Standard Vendor ID
-                onCommandPayloadMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
-                onCommandPayloadMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+                //// Table 14. Protocol IDs for the Matter Standard Vendor ID
+                //onCommandPayloadMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                //onCommandPayloadMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
 
-                var onCommandMessageFrame = new MessageFrame(onCommandPayloadMessagePayload);
+                //var onCommandMessageFrame = new MessageFrame(onCommandPayloadMessagePayload);
 
-                onCommandMessageFrame.MessageFlags |= MessageFlags.S;
-                onCommandMessageFrame.SecurityFlags = 0x00;
-                onCommandMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
-                onCommandMessageFrame.DestinationNodeId = BitConverter.ToUInt64(state.Node.NodeId.ToByteArrayUnsigned());
+                //onCommandMessageFrame.MessageFlags |= MessageFlags.S;
+                //onCommandMessageFrame.SecurityFlags = 0x00;
+                //onCommandMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
+                //onCommandMessageFrame.DestinationNodeId = BitConverter.ToUInt64(state.Node.NodeId.ToByteArrayUnsigned());
 
-                await caseExchange.SendAsync(onCommandMessageFrame);
+                //await caseExchange.SendAsync(onCommandMessageFrame);
 
-                var onCommandResultFrame = await caseExchange.WaitForNextMessageAsync();
+                //var onCommandResultFrame = await caseExchange.WaitForNextMessageAsync();
 
-                await caseExchange.AcknowledgeMessageAsync(onCommandResultFrame.MessageCounter);
+                //await caseExchange.AcknowledgeMessageAsync(onCommandResultFrame.MessageCounter);
+
+                //caseExchange = caseSession.CreateExchange();
+
+                //var onCommandPayload = new MatterTLV();
+                //onCommandPayload.AddStructure();
+                //onCommandPayload.AddBool(0, false);
+                //onCommandPayload.AddBool(1, false);
+                //onCommandPayload.AddArray(tagNumber: 2); // InvokeRequests
+
+                //onCommandPayload.AddStructure();
+
+                //onCommandPayload.AddList(tagNumber: 0); // CommandPath
+
+                //onCommandPayload.AddUInt16(tagNumber: 0, 0x01); // Endpoint 0x01
+                //onCommandPayload.AddUInt32(tagNumber: 1, 0x06); // ClusterId 0x06 - OnOff
+                //onCommandPayload.AddUInt16(tagNumber: 2, 0x01); // 1.5.7 Command On
+
+                //onCommandPayload.EndContainer();
+
+                //onCommandPayload.AddStructure(1); // CommandFields
+                //onCommandPayload.EndContainer(); // Close the CommandFields
+
+                //onCommandPayload.EndContainer(); // Close the structure
+
+                //onCommandPayload.EndContainer(); // Close the array
+
+                //onCommandPayload.AddUInt8(255, 12); // interactionModelRevision
+
+                //onCommandPayload.EndContainer(); // Close the structure
+
+                //var onCommandPayloadMessagePayload = new MessagePayload(onCommandPayload);
+
+                //onCommandPayloadMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+
+                //// Table 14. Protocol IDs for the Matter Standard Vendor ID
+                //onCommandPayloadMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
+                //onCommandPayloadMessagePayload.ProtocolOpCode = 0x08; // InvokeRequest
+
+                //var onCommandMessageFrame = new MessageFrame(onCommandPayloadMessagePayload);
+
+                //onCommandMessageFrame.MessageFlags |= MessageFlags.S;
+                //onCommandMessageFrame.SecurityFlags = 0x00;
+                //onCommandMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
+                //onCommandMessageFrame.DestinationNodeId = BitConverter.ToUInt64(state.Node.NodeId.ToByteArrayUnsigned());
+
+                //await caseExchange.SendAsync(onCommandMessageFrame);
+
+                //var onCommandResultFrame = await caseExchange.WaitForNextMessageAsync();
+
+                //await caseExchange.AcknowledgeMessageAsync(onCommandResultFrame.MessageCounter);
 
                 Console.WriteLine("┌────────────────────────┐");
                 Console.WriteLine("| Let there be darkness! |");

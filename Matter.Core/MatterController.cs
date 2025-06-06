@@ -1,6 +1,8 @@
 ﻿using mDNS.Core;
 using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
+using Microsoft.Extensions.Logging.Abstractions;
+using Matter.Core.Sessions;
 
 namespace Matter.Core
 {
@@ -8,8 +10,10 @@ namespace Matter.Core
     {
         private readonly FabricManager _fabricManager;
         private readonly mDNSService _mDNSService;
+        private readonly ISessionManager _sessionManager;
+        private readonly INodeRegister _nodeRegister;
 
-        private Fabric _fabric;
+        private Fabric? _fabric;
         private Dictionary<int, ICommissioner> _commissioners;
 
         public event IMatterController.ReconnectedToNode ReconnectedToNodeEvent;
@@ -19,14 +23,16 @@ namespace Matter.Core
         {
             _fabricManager = new FabricManager(fabricStorageProvider);
             _commissioners = new Dictionary<int, ICommissioner>();
-            //_mDNSService = new mDNSService();
+            _nodeRegister = new NodeRegister();
+            _sessionManager = new SessionManager(_nodeRegister);
+            _mDNSService = new mDNSService(new NullLogger<mDNSService>());
         }
 
         public Task<ICommissioner> CreateCommissionerAsync()
         {
             if (_fabric == null)
             {
-                throw new InvalidOperationException("Fabric not initialized. Call Init() first.");
+                throw new InvalidOperationException($"Fabric not initialized. Call {nameof(InitAsync)}() first.");
             }
 
             ICommissioner commissioner = new NetworkCommissioner(_fabric);
@@ -38,25 +44,34 @@ namespace Matter.Core
 
         public async Task InitAsync()
         {
+            // Start the mDNS service to discover nodes.
+            //
+            _mDNSService.ServiceDiscovered += (object sender, ServiceDetails args) =>
+            {
+                if (args.Name.Contains("_matter._tcp.local"))
+                {
+                    _nodeRegister.AddCommissionedNode(args.Name.Replace("_matter._tcp.local", ""), args.Addresses);
+                }
+            };
+
             _fabric = await _fabricManager.GetAsync("Test");
             _fabric.NodeAdded += OnNodeAddedToFabric;
+        }
 
-            //_mDNSService.RecordDiscovered += (object sender, Record[] record) =>
-            //{
-            //    foreach (var item in record)
-            //    {
-            //        Console.WriteLine("Found: {0}", item.Name);
-            //    }
-            //};
-
-            // Reconnect to the nodes.
-            //
-            foreach (var node in _fabric.Nodes)
+        public async Task RunAsync()
+        {
+            if (_fabric == null)
             {
-                await node.Connect();
-
-                ReconnectedToNodeEvent?.Invoke(this, node);
+                throw new InvalidOperationException($"Fabric not initialized. Call {nameof(InitAsync)}() first.");
             }
+
+            // Start the mDNS service to discover commissionable and commissioned nodes.
+            //
+            //_mDNSService.Perform(new ServiceDiscovery("_matter._tcp.local.", "_matterc._tcp.local."));
+
+            // Reconnect to the nodes we have already commissioned.
+            //
+            await _sessionManager.Start(_fabric!);
         }
 
         private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)

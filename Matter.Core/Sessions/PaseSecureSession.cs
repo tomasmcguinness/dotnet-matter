@@ -25,7 +25,7 @@ namespace Matter.Core.Sessions
 
         public IConnection CreateNewConnection()
         {
-            return _connection.CreateNewConnection();
+            return _connection.OpenConnection();
         }
 
         public IConnection Connection => _connection;
