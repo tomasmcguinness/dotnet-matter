@@ -25,6 +25,12 @@ The first step for my commissioner is to take the manual pairing code, parse it 
 > [!Note]
 > The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
 
+10/06/2025
+
+Add some simple reconnection logic to the MatterController. It also introduces the https://github.com/tomasmcguinness/dotnet-matter-controller project
+
+https://tomasmcguinness.com/2025/06/10/building-a-net-matter-controller-simple-reconnection/
+
 12/05/2025
 
 Successfully finished the Commissioning project by having a CommissioningComplete Command accepted by a matter.js example device! I've tagged the report with v0.1
