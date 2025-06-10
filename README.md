@@ -33,7 +33,7 @@ https://tomasmcguinness.com/2025/06/10/building-a-net-matter-controller-simple-r
 
 12/05/2025
 
-Successfully finished the Commissioning project by having a CommissioningComplete Command accepted by a matter.js example device! I've tagged the report with v0.1
+Successfully finished the Commissioning project by having a CommissioningComplete Command accepted by a matter.js example device! I've tagged the repository with v0.1
 
 * https://tomasmcguinness.com/2025/05/12/building-a-net-matter-controller-commissioning-flow-commissioningcomplete/
 
