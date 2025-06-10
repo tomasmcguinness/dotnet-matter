@@ -151,7 +151,8 @@ namespace Matter.Core.Fabrics
 
         public string GetFullNodeName(Node node)
         {
-            return $"{node.NodeId}-{CompressedFabricId}";
+            // Specification 1.4 - 4.3.2.1.Operational Instance Name
+            return $"{CompressedFabricId}-{node.NodeId}";
         }
     }
 }

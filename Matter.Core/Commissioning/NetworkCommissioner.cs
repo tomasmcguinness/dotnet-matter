@@ -123,6 +123,11 @@ namespace Matter.Core.Commissioning
                 //    responseMessageFrame.MessagePayload.ProtocolId
                 //);
 
+                //if(responseMessageFrame.IsStatusCode)
+                //{
+
+                //}
+
                 // We have to walk the response.
                 //
                 var PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;

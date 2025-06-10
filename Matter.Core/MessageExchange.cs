@@ -90,7 +90,7 @@ namespace Matter.Core
 
                     Console.WriteLine("\n<<< Received Message {0}", messageFrame.DebugInfo());
 
-                    // Check if we have this message already.
+                    // Check if we have this message already. 
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
                     {
                         Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);

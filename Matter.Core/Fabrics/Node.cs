@@ -25,16 +25,16 @@ namespace Matter.Core
         {
             try
             {
-                IPAddress? ipAddress = null; //LastKnownIpAddress;
-                ushort? port = null; //LastKnownPort;
+                IPAddress? ipAddress = LastKnownIpAddress;
+                ushort? port = LastKnownPort;
 
-                var addresses = nodeRegister.GetCommissionedNodeAddresses(Fabric.GetFullNodeName(this));
+                //var addresses = nodeRegister.GetCommissionedNodeAddresses(Fabric.GetFullNodeName(this));
 
-                if (addresses.Count() == 0)
-                {
-                    IsConnected = false;
-                    return;
-                }
+                //if (addresses.Count() == 0)
+                //{
+                //    IsConnected = false;
+                //    return;
+                //}
 
                 var connection = new UdpConnection(ipAddress!, port!.Value);
 

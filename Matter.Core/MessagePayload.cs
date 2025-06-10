@@ -17,6 +17,7 @@ namespace Matter.Core
         public MessagePayload(byte[] messagePayload)
         {
             var index = 0;
+
             ExchangeFlags = (ExchangeFlags)messagePayload[index];
             index++;
 

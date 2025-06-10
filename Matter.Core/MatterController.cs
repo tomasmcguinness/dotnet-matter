@@ -67,7 +67,7 @@ namespace Matter.Core
 
             // Start the mDNS service to discover commissionable and commissioned nodes.
             //
-            //_mDNSService.Perform(new ServiceDiscovery("_matter._tcp.local.", "_matterc._tcp.local."));
+            _mDNSService.Perform(new ServiceDiscovery("_matter._tcp.local.", "_matterc._tcp.local."));
 
             // Reconnect to the nodes we have already commissioned.
             //

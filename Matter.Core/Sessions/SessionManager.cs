@@ -5,7 +5,6 @@ namespace Matter.Core.Sessions
 {
     public class SessionManager : ISessionManager
     {
-        private Dictionary<UdpConnection, Node> _connections = new();
         private Dictionary<Node, ISession> _secureSessions = new();
         private Channel<Node> _connectionsQueue = Channel.CreateUnbounded<Node>();
         private readonly INodeRegister _nodeRegister;
@@ -33,7 +32,17 @@ namespace Matter.Core.Sessions
 
                 var nodeNeedingConnection = await _connectionsQueue.Reader.ReadAsync();
 
-                await nodeNeedingConnection.Connect(_nodeRegister);
+                try
+                {
+                    var fullNodeName = nodeNeedingConnection.Fabric.GetFullNodeName(nodeNeedingConnection);
+                    Console.WriteLine($"Attempting to connect to node {fullNodeName}...");
+
+                    await nodeNeedingConnection.Connect(_nodeRegister);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to connect to node {nodeNeedingConnection.NodeName}: {ex.Message}");
+                }
             }
         }
     }
