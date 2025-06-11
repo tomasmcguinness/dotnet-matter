@@ -41,6 +41,8 @@ namespace Matter.Core
             // Set the common data on the MessageFrame.
             //
             message.SessionID = _session.SessionId;
+            message.SourceNodeID = _session.SourceNodeId;
+            message.DestinationNodeId = _session.DestinationNodeId;
             message.MessagePayload.ExchangeID = _exchangeId;
             message.MessageCounter = GlobalCounter.Counter;
 
