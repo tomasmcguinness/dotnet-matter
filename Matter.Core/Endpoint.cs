@@ -8,5 +8,7 @@
         }
 
         public uint EndpointId { get; }
+
+        public ulong DeviceType { get; set; }
     }
 }

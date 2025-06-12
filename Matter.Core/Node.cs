@@ -128,6 +128,13 @@ namespace Matter.Core
 
                 var data = attributeReport.AttributeData.Data as List<object?>;
 
+                if (data is not null)
+                {
+                    var deviceTypeList = data[0] as List<object?>;
+
+                    endpoint.DeviceType = (ulong)deviceTypeList[0];
+                }
+
                 Endpoints.Add(endpoint);
             }
 
