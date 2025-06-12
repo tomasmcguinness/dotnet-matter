@@ -2,5 +2,11 @@
 {
     public class Endpoint
     {
+        public Endpoint(uint endpointId)
+        {
+            EndpointId = endpointId;
+        }
+
+        public uint EndpointId { get; }
     }
 }

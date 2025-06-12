@@ -219,7 +219,7 @@ public class MatterTLVTests
 
         encodedNocCertificate.OpenList(6); 
 
-        while(!encodedNocCertificate.IsEndContainer())
+        while(!encodedNocCertificate.IsEndContainerNext())
         {
             encodedNocCertificate.GetUTF8String(17);
             encodedNocCertificate.GetUTF8String(21);
