@@ -84,6 +84,8 @@ namespace Matter.Core
 
             readCluster.EndContainer(); // Close the array
 
+            readCluster.AddBool(tagNumber: 3, false);
+
             // Add the InteractionModelRevision number.
             //
             readCluster.AddUInt8(255, 12);
@@ -123,6 +125,9 @@ namespace Matter.Core
             foreach (var attributeReport in reportData.AttributeReports)
             {
                 Endpoint endpoint = new Endpoint(attributeReport.AttributeData.Path.EndpointId);
+
+                var data = attributeReport.AttributeData.Data as List<object?>;
+
                 Endpoints.Add(endpoint);
             }
 
