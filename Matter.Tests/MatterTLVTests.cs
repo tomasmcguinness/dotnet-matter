@@ -5,7 +5,7 @@ using Org.BouncyCastle.Math;
 
 namespace Matter.Tests;
 
-public class TLVTests
+public class MatterTLVTests
 {
     [SetUp]
     public void Setup()
@@ -24,7 +24,6 @@ public class TLVTests
     [Test]
     public void DecodeCertificatePayload()
     {
-        //var payload = "153001010024020137032414001826047634c72d2605f66a74423706241400182407012408013009410408c7b99cf413c8b761779635a77aa6d9a39c46e138406ffa4cb5763396ef29a6eaf46bd1c747ada0affa4cd57a40fad1495998bc342c9caa5b7b5c2c09fe0d02370a3501290118240260300414fdceb4a9d6379cd29c0fdda2101e6ad2a4177f2b300514fdceb4a9d6379cd29c0fdda2101e6ad2a4177f2b18300b409e598aa37be8a5b860af4650c784e08f61e023c71945405ce31ba4ecd666ec8ac32d8cad72bdef146eae6bb9e96f8dd8d67ce95af29f4a7f47a9327f396a44a318";
         var payload = "153001010024020137032414001826047634c72d2605f66a7442370624140018240701240801300941045f2fed6a8fccb5276a8880c140a408cd0e32b861a64868203ab1d305c26b42b073d5d3f582c12c5fa6bed8870c5a833d9cfa04fe635926f29b5dc5999e1dc399370a3501290118240260300414ecdc34bc8a9872984cb52a0aa526140a3af9bcb3300514ecdc34bc8a9872984cb52a0aa526140a3af9bcb318300b40cab8735099dc984c679af164ea3f28f96ea228bfb7a39bfa91a341af7ce733a63e1ffd797801f02f8c19124db5c3899a04557bcd412f1b0259fea9c36da19ebd18";
         var payloadAsBytes = StringToByteArray(payload);
 
@@ -36,9 +35,6 @@ public class TLVTests
     [Test]
     public void Test()
     {
-        // This payload cannot be parsed.
-        //
-
         var decryptKey = "B0-74-1E-81-B3-5B-A3-3E-08-B4-0F-CE-D2-FE-3A-BB";
         decryptKey = decryptKey.Replace("-", string.Empty);
         var encryptKey = "41-D8-F6-02-A9-D3-00-F7-BB-14-37-3D-2B-A0-8D-79";
@@ -200,6 +196,37 @@ public class TLVTests
         encodedNocCertificate.EndContainer(); // Close Structure
 
         Console.WriteLine(encodedNocCertificate);
+    }
+
+    [Test]
+    public void TestStream()
+    {
+        var encodedNocCertificate = new MatterTLV();
+        encodedNocCertificate.AddStructure();
+        encodedNocCertificate.AddList(6); // Subject
+        encodedNocCertificate.AddUTF8String(17, "2"); // NodeId
+        encodedNocCertificate.AddUTF8String(21, "TestFabric"); // FabricId
+        encodedNocCertificate.EndContainer(); // Close List
+        encodedNocCertificate.EndContainer(); // Close Structure
+
+        encodedNocCertificate.OpenStructure();
+
+        var hasTag1 = encodedNocCertificate.IsNextTag(1);
+        Assert.IsFalse(hasTag1, "Expected no tag 1 at this point.");
+
+        var hasTag6 = encodedNocCertificate.IsNextTag(6);
+        Assert.IsTrue(hasTag6, "Expected tag 6 at this point.");
+
+        encodedNocCertificate.OpenList(6); 
+
+        while(!encodedNocCertificate.IsEndContainer())
+        {
+            encodedNocCertificate.GetUTF8String(17);
+            encodedNocCertificate.GetUTF8String(21);
+        }
+
+        encodedNocCertificate.CloseContainer();
+        encodedNocCertificate.CloseContainer();
     }
 
     public static byte[] StringToByteArray(string hex)

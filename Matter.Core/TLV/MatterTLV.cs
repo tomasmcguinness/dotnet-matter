@@ -231,9 +231,9 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddBool(int tagNumber, bool v2)
+        public MatterTLV AddBool(int tagNumber, bool value)
         {
-            if (v2)
+            if (value)
             {
                 _values.Add(0x01 << 5 | 0x09); // Boolean TRUE
             }
@@ -255,50 +255,98 @@ namespace Matter.Core.TLV
 
         private int _pointer = 0;
 
+        public bool IsNextTag(int tagNumber)
+        {
+            // Skip the Control octet by adding 1.
+            //
+            return _values[_pointer + 1] == (byte)tagNumber; // Check if the next tag matches the expected tag number
+        }
+
+        public bool IsEndContainerNext()
+        {
+            return _values[_pointer] == 0x18; // Check if the next tag is an End Container
+        }
+
         public void OpenStructure()
         {
-            if (_values[_pointer++] != 0x15) // Anonymous Structure
+            if (_values[_pointer++] != 0x15) // Tag Anonymous Structure
             {
                 throw new Exception("Expected Structure not found");
             }
         }
 
-        public void OpenStructure(int tag)
+        public void OpenStructure(int? tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x15) // Tag Context Structure
+            int tagControl = _values[_pointer] >> 5;
+
+            if ((0x1F & _values[_pointer++]) != 0x15) // Structure
             {
                 throw new Exception("Expected Structure not found");
             }
 
-            if (_values[_pointer++] != (byte)tag)
+            if (tag is null)
             {
-                throw new Exception("Expected tag number not found");
+                if (tagControl == 0x01)
+                {
+                    _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                }
+            }
+            else
+            {
+                if (_values[_pointer++] != (byte)tag)
+                {
+                    throw new Exception($"Expected tag number {tag} not found");
+                }
             }
         }
 
-        public void OpenArray(int tag)
+        public void OpenArray(int? tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x16) // Context Array
+            int tagControl = _values[_pointer] >> 5;
+
+            if ((0x1F & _values[_pointer++]) != 0x16) // Array
             {
                 throw new Exception("Expected Array not found");
             }
 
-            if (_values[_pointer++] != (byte)tag)
+            if (tag is null)
             {
-                throw new Exception("Expected tag number not found");
+                if (tagControl == 0x01)
+                {
+                    _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                }
+            }
+            else
+            {
+                if (_values[_pointer++] != (byte)tag)
+                {
+                    throw new Exception($"Expected tag number {tag} not found");
+                }
             }
         }
 
-        public void OpenList(int tag)
+        public void OpenList(int? tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x17) // Context List
+            int tagControl = _values[_pointer] >> 5;
+
+            if ((0x1F & _values[_pointer++]) != 0x17) // List
             {
                 throw new Exception("Expected List not found");
             }
 
-            if (_values[_pointer++] != (byte)tag)
+            if (tag is null)
             {
-                throw new Exception("Expected tag number not found");
+                if (tagControl == 0x01)
+                {
+                    _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                }
+            }
+            else
+            {
+                if (_values[_pointer++] != (byte)tag)
+                {
+                    throw new Exception("Expected tag number not found");
+                }
             }
         }
 
@@ -385,6 +433,139 @@ namespace Matter.Core.TLV
             return bytes;
         }
 
+        public byte[] GetUTF8String(int tag)
+        {
+            // Check the Control Octet.
+            //
+            int length = 0;
+
+            if ((0x1F & _values[_pointer]) == 0x0C)
+            {
+                //Octet String, 1 - octet length
+                length = 1;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x0D)
+            {
+                //Octet String, 2 - octet length
+                length = 2;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x0E)
+            {
+                //Octet String, 4 - octet length
+                length = 4;
+            }
+            else if ((0x1F & _values[_pointer]) == 0x0F)
+            {
+                //Octet String, 8 - octet length
+                length = 8;
+            }
+
+            _pointer++;
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            ulong valueLength = 0;
+
+            if (length == 1)
+            {
+                valueLength = _values[_pointer++];
+            }
+            else if (length == 2)
+            {
+                valueLength = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                _pointer += 2;
+            }
+            else if (length == 4)
+            {
+                valueLength = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+                _pointer += 4;
+            }
+            else if (length == 8)
+            {
+                valueLength = BitConverter.ToUInt64(_values.ToArray(), _pointer);
+                _pointer += 8;
+            }
+
+            var bytes = new byte[valueLength];
+
+            Array.Copy(_values.ToArray(), _pointer, bytes, 0, (int)valueLength);
+
+            _pointer += (int)valueLength;
+
+            return bytes;
+        }
+
+        internal long GetSignedInt(int? tag)
+        {
+            var elementType = (0x1F & _values[_pointer++]);
+
+            if (tag is null)
+            {
+                _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+            }
+            else
+            {
+                if (_values[_pointer++] != (byte)tag)
+                {
+                    throw new Exception("Expected tag number not found");
+                }
+            }
+
+            long value = 0;
+
+            switch (elementType)
+            {
+                case 0x00: // 1 Byte Unsigned Integer
+                    value = Convert.ToInt64(_values[_pointer++]);
+                    break;
+                case 0x01: // 2 Byte Unsigned Integer
+                    value = BitConverter.ToInt16(_values.ToArray(), _pointer);
+                    _pointer += 2;
+                    break;
+                default:
+                    throw new Exception($"Unexpected element type {elementType}");
+            }
+
+            return value;
+        }
+
+        internal ulong GetUnsignedInt(int? tag)
+        {
+            var elementType = (0x1F & _values[_pointer++]);
+
+            if (tag is null)
+            {
+                _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+            }
+            else
+            {
+                if (_values[_pointer++] != (byte)tag)
+                {
+                    throw new Exception("Expected tag number not found");
+                }
+            }
+
+            ulong value = 0;
+
+            switch (elementType)
+            {
+                case 0x04: // 1 Byte Unsigned Integer
+                    value = Convert.ToUInt64(_values[_pointer++]);
+                    break;
+                case 0x05: // 2 Byte Unsigned Integer
+                    value = (ulong)BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                    _pointer += 2;
+                    break;
+                default:
+                    throw new Exception($"Unexpected element type {elementType}");
+            }
+
+            return value;
+        }
+
         public byte GetUnsignedInt8(int tag)
         {
             if ((0x1F & _values[_pointer++]) != 0x04)
@@ -421,7 +602,7 @@ namespace Matter.Core.TLV
             return value;
         }
 
-        internal uint GetUnsignedInt32(int tag)
+        public uint GetUnsignedInt32(int tag)
         {
             if ((0x1F & _values[_pointer++]) != 0x06)
             {
@@ -440,6 +621,25 @@ namespace Matter.Core.TLV
             return value;
         }
 
+        public ulong GetUnsignedInt64(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x07)
+            {
+                throw new Exception("Expected Unsigned Integer, 8-octet value");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            var value = BitConverter.ToUInt64(_values.ToArray(), _pointer);
+
+            _pointer += 8;
+
+            return value;
+        }
+
         public void CloseContainer()
         {
             if (_values[_pointer++] != 0x18) // End Container
@@ -448,7 +648,7 @@ namespace Matter.Core.TLV
             }
         }
 
-        internal byte[] GetBytes()
+        public byte[] GetBytes()
         {
             return _values.ToArray();
         }
@@ -500,7 +700,7 @@ namespace Matter.Core.TLV
                             length++;
                         }
 
-                        sb.AppendLine("Array {");
+                        sb.AppendLine("Array [");
                         indentation += 2;
                     }
 
@@ -512,7 +712,7 @@ namespace Matter.Core.TLV
                             length++;
                         }
 
-                        sb.AppendLine("List {");
+                        sb.AppendLine("List [");
                         indentation += 2;
                     }
 
@@ -576,21 +776,6 @@ namespace Matter.Core.TLV
                         length += 1;
                     }
 
-                    else if (elementType == 0x01) // Signed Integer 16bit 
-                    {
-                        if (tagControl == 0x01) // Context {
-                        {
-                            sb.Append($"{bytes[index + 1].ToString()} => ");
-                            length++;
-                        }
-
-                        var value = BitConverter.ToInt16(bytes, index + length);
-
-                        sb.AppendLine($"Signed Int (16bit) ({value}|0x{value:X2})");
-
-                        length += 2;
-                    }
-
                     else if (elementType == 0x00) // Signed Integer 8bit 
                     {
                         if (tagControl == 0x01) // Context {
@@ -604,6 +789,21 @@ namespace Matter.Core.TLV
                         sb.AppendLine($"Signed Int (8bit) ({value}|0x{value:X2})");
 
                         length += 1;
+                    }
+
+                    else if (elementType == 0x01) // Signed Integer 16bit 
+                    {
+                        if (tagControl == 0x01) // Context {
+                        {
+                            sb.Append($"{bytes[index + 1].ToString()} => ");
+                            length++;
+                        }
+
+                        var value = BitConverter.ToInt16(bytes, index + length);
+
+                        sb.AppendLine($"Signed Int (16bit) ({value}|0x{value:X2})");
+
+                        length += 2;
                     }
 
                     else if (elementType == 0x0C) // UTF-8 String, 1-octet length
@@ -735,7 +935,7 @@ namespace Matter.Core.TLV
                     else if (elementType == 0x18)
                     {
                         indentation -= 2;
-                        sb.AppendLine("}");
+                        sb.AppendLine("}"); // Should be a ] if we opened with an array or list.
                     }
 
                     else
@@ -768,6 +968,73 @@ namespace Matter.Core.TLV
             }
 
             return sb.ToString();
+        }
+
+        public object? GetData(int? tag)
+        {
+            int tagControl = _values[_pointer] >> 5;
+            int elementType = _values[_pointer] >> 0 & 0x1F;
+
+            switch (elementType)
+            {
+                case 0x00:
+                case 0x01:
+                case 0x02:
+                case 0x03:
+                    return GetSignedInt(tag);
+
+                case 0x04: //
+                case 0x05:
+                case 0x06:
+                case 0x07:
+                    return GetUnsignedInt(tag);
+                case 0x15: // Structure
+
+                    List<object> structure = [];
+
+                    OpenStructure(tag);
+
+                    while (!IsEndContainerNext())
+                    {
+                        structure.Add(GetData(null));
+                    }
+
+                    CloseContainer();
+
+                    return structure;
+
+                case 0x16:
+
+                    List<object> array = [];
+
+                    OpenArray(tag);
+
+                    while (!IsEndContainerNext())
+                    {
+                        array.Add(GetData(null));
+                    }
+
+                    CloseContainer();
+
+                    return array;
+                case 0x17:
+
+                    List<object> list = [new List<object>()];
+
+                    OpenList(tag);
+
+                    while (!IsEndContainerNext())
+                    {
+                        list.Add(GetData(null));
+                    }
+
+                    CloseContainer();
+
+                    return list;
+
+                default:
+                    throw new Exception($"Cannot process elementType {elementType:X2}");
+            }
         }
     }
 }

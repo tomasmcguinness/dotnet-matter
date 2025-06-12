@@ -3,6 +3,7 @@ using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Matter.Core.Sessions;
+using Org.BouncyCastle.Math;
 
 namespace Matter.Core
 {
@@ -85,6 +86,11 @@ namespace Matter.Core
         public Task<IEnumerable<Node>> GetNodesAsync()
         {
             return Task.FromResult(_fabric.Nodes.AsEnumerable());
+        }
+
+        public Task<Node> GetNodeAsync(BigInteger nodeId)
+        {
+            return Task.FromResult(_fabric.Nodes.First(x => x.NodeId.ToString() == nodeId.ToString()));
         }
     }
 }

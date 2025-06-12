@@ -1,5 +1,6 @@
 ﻿using Matter.Core.Events;
 using Matter.Core.Fabrics;
+using Org.BouncyCastle.Math;
 
 namespace Matter.Core
 {
@@ -16,6 +17,8 @@ namespace Matter.Core
         Task<ICommissioner> CreateCommissionerAsync();
 
         Task<IEnumerable<Node>> GetNodesAsync();
+
+        Task<Node> GetNodeAsync(BigInteger nodeId);
 
         Task RunAsync();
     }

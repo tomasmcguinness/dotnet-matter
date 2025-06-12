@@ -90,8 +90,8 @@ namespace Matter.Core.Sessions
 
             var nonce = memoryStream.ToArray();
 
-            Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
-            Console.WriteLine("encryptionKey: {0}", BitConverter.ToString(_encryptionKey));
+            //Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
+            //Console.WriteLine("encryptionKey: {0}", BitConverter.ToString(_encryptionKey));
 
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
@@ -104,7 +104,7 @@ namespace Matter.Core.Sessions
 
             var additionalData = memoryStream.ToArray();
 
-            Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
+            //Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
 
             byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
             byte[] tag = new byte[16];
@@ -144,8 +144,8 @@ namespace Matter.Core.Sessions
 
             var nonce = memoryStream.ToArray();
 
-            Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
-            Console.WriteLine("decryptionKey: {0}", BitConverter.ToString(_decryptionKey));
+            //Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
+            //Console.WriteLine("decryptionKey: {0}", BitConverter.ToString(_decryptionKey));
 
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
@@ -158,7 +158,7 @@ namespace Matter.Core.Sessions
 
             var additionalData = memoryStream.ToArray();
 
-            Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
+            //Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
 
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 
