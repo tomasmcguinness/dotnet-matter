@@ -23,13 +23,15 @@ The first step is decoding the commissioning code which contains the information
 The first step for my commissioner is to take the manual pairing code, parse it and then use Bluetooth to find the device using the Discriminator.
 
 > [!Note]
-> The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at.
+> The blog posts will represent points in time as I add and explore the protocol. The whole framework will evolve, so the code in the posts will go out of date, but the technicals will still be useful to look at. I'll use tags when a meaninful milestone is reached, so the code can be viewed at the time each blog post was written.
 
 10/06/2025
 
 Add some simple reconnection logic to the MatterController. It also introduces the https://github.com/tomasmcguinness/dotnet-matter-controller project
 
 https://tomasmcguinness.com/2025/06/10/building-a-net-matter-controller-simple-reconnection/
+
+I tagged the repository with v0.2
 
 12/05/2025
 
