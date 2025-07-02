@@ -2,8 +2,10 @@
 {
     public class CommissioningPayloadHelper
     {
-        public CommissioningPayload ParseManualSetupCode(string manualSetupCode)
+        public static CommissioningPayload ParseManualSetupCode(string manualSetupCode)
         {
+            manualSetupCode = manualSetupCode.Replace("-", "");
+
             if (manualSetupCode.Length != 11)
             {
                 throw new ArgumentException("Manual setup code must be 11 digits long.");
@@ -11,7 +13,7 @@
 
             var isValid = Verhoeff.validateVerhoeff(manualSetupCode);
 
-            if(!isValid)
+            if (!isValid)
             {
                 throw new ArgumentException("Manual setup code failed checksum.");
             }

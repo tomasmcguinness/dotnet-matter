@@ -10,9 +10,7 @@ namespace Matter.Core
         private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
         private IPAddress _ipAddress;
         private ushort _port;
-        private IPEndPoint _Endpoint = new IPEndPoint(IPAddress.Any, 0);
-
-        private AsyncCallback _ReceiveCallback = null;
+        private IPEndPoint _Endpoint = new IPEndPoint(IPAddress.IPv6Any, 0);
 
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
@@ -27,7 +25,14 @@ namespace Matter.Core
 
             _cancellationTokenSource = new CancellationTokenSource();
 
-            _udpClient = new UdpClient(0);
+            if (address.AddressFamily == AddressFamily.InterNetwork)
+            {
+                _udpClient = new UdpClient(AddressFamily.InterNetwork);
+            }
+            else if (address.AddressFamily == AddressFamily.InterNetworkV6)
+            {
+                _udpClient = new UdpClient(AddressFamily.InterNetworkV6);
+            }
             _udpClient.Connect(address, port);
 
             Task.Factory.StartNew(ProcessIncomingData);

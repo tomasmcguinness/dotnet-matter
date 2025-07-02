@@ -128,7 +128,7 @@ namespace Matter.Core.Sessions
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            //Console.WriteLine("Decrypting MessagePayload...");
+            Console.WriteLine("Decrypting MessagePayload...");
 
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
@@ -150,8 +150,8 @@ namespace Matter.Core.Sessions
 
             var additionalData = memoryStream.ToArray();
 
-            //Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
-            //Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
+            Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
+            Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
 
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 

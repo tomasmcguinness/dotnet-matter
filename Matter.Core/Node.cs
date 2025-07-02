@@ -63,7 +63,7 @@ namespace Matter.Core
         {
             if (!IsConnected)
             {
-                throw new Exception("Node is not connected. Please connect before interrogating.");
+                return;
             }
 
             Endpoints = [];
@@ -132,7 +132,10 @@ namespace Matter.Core
                 {
                     var deviceTypeList = data[0] as List<object?>;
 
-                    endpoint.DeviceType = (ulong)deviceTypeList[0];
+                    if (deviceTypeList is not null)
+                    {
+                        endpoint.DeviceType = (ulong)deviceTypeList[0];
+                    }
                 }
 
                 Endpoints.Add(endpoint);

@@ -48,7 +48,7 @@ namespace Matter.Core
                 case 0x01:
                     return "InteractionModel";
                 default:
-                    return protocolId.ToString("X4");
+                    return "Unmapped Protocol Id: " + protocolId.ToString("X4");
             }
         }
 
@@ -95,7 +95,7 @@ namespace Matter.Core
                 }
             }
 
-            return "";
+            return $"Unknown ProtocolId: {protocolId}, OpCode: {opCode}";
         }
 
         public static MatterTLV ToMatterCertificate(this X509Certificate certificate)

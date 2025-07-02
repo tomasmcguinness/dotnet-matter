@@ -28,6 +28,8 @@ namespace Matter.Core.Commissioning
         public ushort Port { get; set; }
 
         public Node Node { get; set; }
+
+        public uint Passcode { get; set; }
     }
 
     internal class NetworkCommissioningThread
@@ -43,7 +45,19 @@ namespace Matter.Core.Commissioning
 
         public void CommissionNode(object? state)
         {
-            CommissionOnNetworkDevice(state as NetworkCommissioningThreadState).Wait();
+            if (state is null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            var args = state as NetworkCommissioningThreadState;
+
+            if (args is null)
+            {
+                throw new ArgumentException("Thread state should be a NetworkCommissioningThreadState");
+            }
+
+            CommissionOnNetworkDevice(args).Wait();
         }
 
         private async Task CommissionOnNetworkDevice(NetworkCommissioningThreadState state)
@@ -64,7 +78,6 @@ namespace Matter.Core.Commissioning
                 //
                 Console.WriteLine("┌───────────────────────────────────────────────┐");
                 Console.WriteLine("| COMMISSIONING STEP 6 - Establish PASE         |");
-                Console.WriteLine("| Send PBKDFParamRequest                        |");
                 Console.WriteLine("└───────────────────────────────────────────────┘");
 
                 var PBKDFParamRequest = new MatterTLV();
@@ -84,6 +97,7 @@ namespace Matter.Core.Commissioning
                 var messagePayload = new MessagePayload(PBKDFParamRequest);
 
                 messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+                //messagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
 
                 // Table 14. Protocol IDs for the Matter Standard Vendor ID
                 messagePayload.ProtocolId = 0x00;
@@ -123,11 +137,6 @@ namespace Matter.Core.Commissioning
                 //    responseMessageFrame.MessagePayload.ProtocolId
                 //);
 
-                //if(responseMessageFrame.IsStatusCode)
-                //{
-
-                //}
-
                 // We have to walk the response.
                 //
                 var PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
@@ -147,7 +156,7 @@ namespace Matter.Core.Commissioning
                 var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
                 var salt = PBKDFParamResponse.GetOctetString(2);
 
-                //Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
+                Console.WriteLine("Iterations: {0}\nSalt Base64: {1}", iterations, Convert.ToBase64String(salt));
 
                 PBKDFParamResponse.CloseContainer();
 
@@ -185,7 +194,7 @@ namespace Matter.Core.Commissioning
                 var pake1 = new MatterTLV();
                 pake1.AddStructure();
 
-                var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(20202021, iterations, salt);
+                var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(state.Passcode, iterations, salt);
 
                 var byteString = X.GetEncoded(false).ToArray();
 
@@ -200,6 +209,7 @@ namespace Matter.Core.Commissioning
                 var pake1MessagePayload = new MessagePayload(pake1);
 
                 pake1MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+                messagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
 
                 // Table 14. Protocol IDs for the Matter Standard Vendor ID
                 pake1MessagePayload.ProtocolId = 0x00;
@@ -321,14 +331,14 @@ namespace Matter.Core.Commissioning
                 var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                 var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
 
-                //Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
-                //Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
-                //Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
+                Console.WriteLine("decryptKey: {0}", BitConverter.ToString(decryptKey));
+                Console.WriteLine("encryptKey: {0}", BitConverter.ToString(encryptKey));
+                Console.WriteLine("attestationKey: {0}", BitConverter.ToString(attestationKey));
 
-                Console.WriteLine("┌─────────────────────────┐");
-                Console.WriteLine("| PASE Complete!          |");
+                Console.WriteLine("┌──────────────────────┐");
+                Console.WriteLine("| PASE Complete!       |");
                 Console.WriteLine(format: "| PeerSessionId: {0} |", peerSessionId);
-                Console.WriteLine("└─────────────────────────┘");
+                Console.WriteLine("└──────────────────────┘");
 
                 // Create a PASE session
                 //
@@ -871,7 +881,6 @@ namespace Matter.Core.Commissioning
 
                 var addNocRequestMessageFrame = new MessageFrame(addNocRequestMessagePayload);
 
-                // TODO Send this using MRP.
                 addNocRequestMessageFrame.MessageFlags |= MessageFlags.S;
                 addNocRequestMessageFrame.SecurityFlags = 0x00;
                 addNocRequestMessageFrame.SourceNodeID = 0x00;
@@ -892,9 +901,9 @@ namespace Matter.Core.Commissioning
 
                 #region COMMISSIONING STEP 20 - CASE
 
-                Console.WriteLine("┌───────────────────────────────────────┐");
-                Console.WriteLine("| COMMISSIONING STEP 20 - CASE - Sigma1 |");
-                Console.WriteLine("└───────────────────────────────────────┘");
+                Console.WriteLine("┌──────────────────────────────┐");
+                Console.WriteLine("| COMMISSIONING STEP 20 - CASE |");
+                Console.WriteLine("└──────────────────────────────┘");
 
                 // Create a new Exchange over the unsecure session.
                 //
@@ -1140,20 +1149,22 @@ namespace Matter.Core.Commissioning
     {
         private readonly Node _node;
         private readonly Fabric _fabric;
+        private readonly INodeRegister _nodeRegister;
         private readonly int _commissionerId;
 
         public delegate void CommissioningStepEventHandler(object sender, CommissioningStepEventArgs e);
         public event CommissioningStepEventHandler ThresholdReached;
 
-        public NetworkCommissioner(Fabric fabric)
+        public NetworkCommissioner(Fabric fabric, INodeRegister nodeRegister)
         {
             _fabric = fabric;
+            _nodeRegister = nodeRegister;
             _commissionerId = RandomNumberGenerator.GetInt32(0, 1000000);
         }
 
         public int Id => _commissionerId;
 
-        public async Task CommissionNodeAsync(int discriminator)
+        public async Task CommissionNodeAsync(CommissioningPayload commissioningPayload)
         {
             ManualResetEvent resetEvent = new ManualResetEvent(false);
 
@@ -1161,15 +1172,24 @@ namespace Matter.Core.Commissioning
             //
             var nodeToCommission = _fabric.CreateNode();
 
-            // TODO perform discovery.
+            // Look at the NodeRegistry.
             //
+            var nodeDetails = await _nodeRegister.GetCommissionableNodeForDiscriminatorAsync(commissioningPayload.Discriminator);
 
-            // Assume a fixed address & port until we have discovery in place.
+            if (nodeDetails is null)
+            {
+                return;
+            }
+
+            // How do you decide which address??
             //
-            System.Net.IPAddress address = System.Net.IPAddress.Parse("127.0.0.1");
-            ushort port = 5540;
+            var firstAddress = nodeDetails.Addresses.First();
 
-            // Run the commissioning in a thread.
+            // Where do I find the port number???
+            //
+            System.Net.IPAddress address = System.Net.IPAddress.Parse(firstAddress);
+
+            // Run the commissioning in a thread and run that task in a thread.
             //
             var commissioningThread = new NetworkCommissioningThread(_fabric, resetEvent);
 
@@ -1179,18 +1199,13 @@ namespace Matter.Core.Commissioning
                 {
                     Node = nodeToCommission,
                     IPAddress = address,
-                    Port = port,
+                    Port = nodeDetails.Port,
+                    Passcode = commissioningPayload.Passcode
                 });
                 resetEvent.Set();
             });
 
             Task.WaitAll([commissioningTask], TimeSpan.FromSeconds(60));
-
-            //// Start the thread, passing the fabric as a parameter.
-            ////
-            //_commissioningThread = new Thread(new ParameterizedThreadStart(commissioningThread.PerformDiscovery));
-            //_commissioningThread.Start(_fabric);
-            //_commissioningThread.Join();
         }
     }
 }

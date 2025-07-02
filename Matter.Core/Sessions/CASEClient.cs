@@ -31,6 +31,10 @@ namespace Matter.Core.Sessions
 
         internal async Task<ISession> EstablishSessionAsync()
         {
+            Console.WriteLine("┌───────────────────────┐");
+            Console.WriteLine("| SENDING CASE - Sigma1 |");
+            Console.WriteLine("└───────────────────────┘");
+
             var caseExchange = _unsecureSession.CreateExchange();
 
             // Exchange CASE Messages, starting with Sigma1
@@ -88,9 +92,9 @@ namespace Matter.Core.Sessions
 
             await caseExchange.SendAsync(sigma1MessageFrame);
 
-            Console.WriteLine("┌───────────────────────────────────────┐");
-            Console.WriteLine("| COMMISSIONING STEP 20 - CASE - Sigma2 |");
-            Console.WriteLine("└───────────────────────────────────────┘");
+            Console.WriteLine("┌───────────────────────┐");
+            Console.WriteLine("| SENDING CASE - Sigma2 |");
+            Console.WriteLine("└───────────────────────┘");
 
             var sigma2MessageFrame = await caseExchange.WaitForNextMessageAsync();
 
@@ -167,9 +171,9 @@ namespace Matter.Core.Sessions
 
             // TODO Verify this!
 
-            Console.WriteLine("┌───────────────────────────────────────┐");
-            Console.WriteLine("| COMMISSIONING STEP 20 - CASE - Sigma3 |");
-            Console.WriteLine("└───────────────────────────────────────┘");
+            Console.WriteLine("┌───────────────────────┐");
+            Console.WriteLine("| SENDING CASE - Sigma3 |");
+            Console.WriteLine("└───────────────────────┘");
 
             // First, generate a signature for our NOC
             //

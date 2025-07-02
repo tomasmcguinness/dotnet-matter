@@ -105,7 +105,7 @@ namespace Matter.Core
                     //
                     if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
                     {
-                        //Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
+                        Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
                         return;
                     }
 
@@ -119,11 +119,11 @@ namespace Matter.Core
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Failed to read incoming message: {0}: [{1}]", ex.Message, BitConverter.ToString(bytes));
                     Console.ForegroundColor = ConsoleColor.White;
-
-                    break;
                 }
 
             } while (!_cancellationTokenSource.Token.IsCancellationRequested);
+
+            Console.WriteLine("Exiting ReceiveAsync loop...");
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter)

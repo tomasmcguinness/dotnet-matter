@@ -1,5 +1,4 @@
 ﻿using Matter.Core.Events;
-using Matter.Core.Fabrics;
 using Org.BouncyCastle.Math;
 
 namespace Matter.Core
@@ -11,6 +10,9 @@ namespace Matter.Core
 
         delegate void ReconnectedToNode(object sender, Node node);
         event ReconnectedToNode ReconnectedToNodeEvent;
+
+        delegate void CommissionableNodeDiscovered(object sender);
+        event CommissionableNodeDiscovered CommissionableNodeDiscoveredEvent;
 
         Task InitAsync();
 
