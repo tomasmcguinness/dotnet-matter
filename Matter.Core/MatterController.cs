@@ -79,7 +79,7 @@ namespace Matter.Core
             {
                 var instanceName = server.Name.ToString();
 
-                Console.WriteLine($"Processing '{instanceName}'");
+                //Console.WriteLine($"Processing '{instanceName}'");
 
                 if (instanceName.Contains("_matter._tcp.local"))
                 {
@@ -127,13 +127,13 @@ namespace Matter.Core
 
         private void _serviceDiscovery_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs e)
         {
-            Console.WriteLine($"Service Instance Discovered '{e.ServiceInstanceName}'");
+            //Console.WriteLine($"Service Instance Discovered '{e.ServiceInstanceName}'");
             _mDNSService.SendQuery(e.ServiceInstanceName, type: DnsType.SRV);
         }
 
         private void _serviceDiscovery_ServiceDiscovered(object? sender, DomainName serviceName)
         {
-            Console.WriteLine($"Service Discovered '{serviceName}'");
+            //Console.WriteLine($"Service Discovered '{serviceName}'");
 
             //_mDNSService.SendQuery(serviceName, type: DnsType.PTR);
         }

@@ -418,6 +418,7 @@ namespace Matter.Core.Sessions
             var caseSession = new CaseSecureSession(udpConnection,
                                                     BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned()),
                                                     BitConverter.ToUInt64(_node.NodeId.ToByteArrayUnsigned()),
+                                                    BitConverter.ToUInt16(spake1SessionId),
                                                     sigma2ResponderSessionId,
                                                     encryptKey,
                                                     decryptKey);

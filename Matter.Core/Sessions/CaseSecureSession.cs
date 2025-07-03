@@ -12,6 +12,7 @@ namespace Matter.Core.Sessions
                                  ulong sourceNodeId,
                                  ulong destinationNodeId,
                                  ushort sessionId,
+                                 ushort peerSessionId,
                                  byte[] encryptionKey,
                                  byte[] decryptionKey)
         {
@@ -22,11 +23,10 @@ namespace Matter.Core.Sessions
             SourceNodeId = sourceNodeId;
             DestinationNodeId = destinationNodeId;
 
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                SessionId = sessionId;
-                Console.WriteLine($"Created CASE Secure Session: {SessionId}");
-            }
+            SessionId = sessionId;
+            PeerSessionId = peerSessionId;
+
+            Console.WriteLine($"Created CASE Secure Session: {SessionId}");
         }
 
         public void Close()
