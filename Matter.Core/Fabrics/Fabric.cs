@@ -132,9 +132,7 @@ namespace Matter.Core.Fabrics
 
         internal Node CreateNode()
         {
-            // TODO Unique ID for each node!
-            //
-            var nodeIdBytes = "ABABABAB00010001".ToByteArray();
+            var nodeIdBytes = RandomNumberGenerator.GetBytes(32);
             var nodeId = new BigInteger(nodeIdBytes, false);
 
             return new Node()
@@ -152,6 +150,7 @@ namespace Matter.Core.Fabrics
         public string GetFullNodeName(Node node)
         {
             // Specification 1.4 - 4.3.2.1.Operational Instance Name
+            //
             return $"{CompressedFabricId}-{node.NodeId}";
         }
     }
