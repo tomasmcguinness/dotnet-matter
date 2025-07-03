@@ -10,13 +10,15 @@
 
         ushort SessionId { get; }
 
+        ushort PeerSessionId { get; }
+
         bool UseMRP { get; }
 
         MessageExchange CreateExchange();
 
         byte[] Encode(MessageFrame message);
 
-        MessageFrame Decode(byte[] payload);
+        MessageFrame Decode(MessageFrameParts messageFrameParts);
 
         Task<byte[]> ReadAsync();
 

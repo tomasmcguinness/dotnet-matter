@@ -10,17 +10,16 @@ namespace Matter.Core.Sessions
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
 
-        public PaseSecureSession(IConnection connection, ushort sessionId, byte[] encryptionKey, byte[] decryptionKey)
+        public PaseSecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
             _encryptionKey = encryptionKey;
             _decryptionKey = decryptionKey;
 
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                SessionId = sessionId;
-                Console.WriteLine($"Created PASE Secure Session: {SessionId}");
-            }
+            SessionId = sessionId;
+            PeerSessionId = peerSessionId;
+
+            Console.WriteLine($"Created PASE Secure Session: {SessionId}, PeerSessionId: {PeerSessionId}");
         }
 
         public IConnection CreateNewConnection()
@@ -34,13 +33,15 @@ namespace Matter.Core.Sessions
 
         public ulong DestinationNodeId { get; } = 0x00;
 
+        public ushort SessionId { get; }
+
+        public ushort PeerSessionId { get; }
+
         public void Close()
         {
             _cancellationTokenSource.Cancel();
             _connection.Close();
         }
-
-        public ushort SessionId { get; }
 
         public bool UseMRP => true;
 
@@ -49,22 +50,16 @@ namespace Matter.Core.Sessions
             // We're going to Exchange messages in this session, so we need an MessageExchange 
             // to track it (4.10).
             //
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                var randomBytes = new byte[2];
+            ushort trueRandom = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2));
 
-                rng.GetBytes(randomBytes);
-                ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
+            var exchangeId = trueRandom;
 
-                var exchangeId = trueRandom;
+            Console.WriteLine($"Created Exchange ID: {exchangeId}");
+            var exchange = new MessageExchange(exchangeId, this);
 
-                Console.WriteLine($"Created Exchange ID: {exchangeId}");
-                var exchange = new MessageExchange(exchangeId, this);
+            _exchanges.Add(exchange);
 
-                _exchanges.Add(exchange);
-
-                return exchange;
-            }
+            return exchange;
         }
 
         public async Task SendAsync(byte[] message)
@@ -116,12 +111,11 @@ namespace Matter.Core.Sessions
             return parts.Header.Concat(totalPayload).ToArray();
         }
 
-        public MessageFrame Decode(byte[] payload)
+        public MessageFrame Decode(MessageFrameParts parts)
         {
             // Run this through the decoder. We need to start reading the bytes until we 
             // get to the payload. We then need to decrypt the payload.
             //
-            var parts = new MessageFrameParts(payload);
 
             //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
             //Console.WriteLine("Incoming Encrypted MessagePayload: {0}", BitConverter.ToString(parts.MessagePayload));
@@ -138,7 +132,7 @@ namespace Matter.Core.Sessions
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var nonce = memoryStream.ToArray();
-            
+
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 

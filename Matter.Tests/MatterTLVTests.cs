@@ -25,7 +25,17 @@ public class MatterTLVTests
     [Test]
     public void MessageDecode2()
     {
-        var payload = "00-C2-A0-00-06-D8-EF-00-90-43-41-06-49-72-9E-8F-E2-8E-AF-BA-ED-56-F0-32-92-C5-54-07-23-FC-BE-14-62-0C-15-E9-33-5A-54-DC-F9-53-9D-3C-E4-77-4D-24-54-07-83-20-61-06-82-50-A2-0F-CD-FD-88-73-4A-21-A6-0E-0F-90-AE-BF-44-F4-84-AA-FC-ED-3D-15-5C-05-2C-F3-64-A9-D3-DB-43-C4-9C-8A-15-52-1C-D4-54-54-39-E8-EB-EB-7E-01-B9-BD-03-0D-7E-C1-0B-E2-2A-96-FC-30-2D-50-3F-0C-A0-2F-9A-58-71-55-A6-27-3A-BF-24-8F-68-EB-04-C7-13-45-EF-6B-90-FE-B6-61-D0-FF-B7-18-E9-A2-40-B4-AE-E1-E8-25-E2-02-F6-E9-81-0E-B3-BD-21-8D-76-8C-82-65-5E-EA-7C-28-2A-A7-C7-6A-97-CF-00-D6-C4-64-AA-9B-84-0A-7C-6D-7D-17-C1-04-4F-C6-6C-C0-C4-BA-96-B5-C0-B9-BE-23-7A-6C-FE-E4-AC-FC-1F-D6-E4-59-A4-4D-59-5F-CF-9F-E3-D2-DF-CC-C4-C0-4C-93-48-3F-FC-A3-79-E6-F8-FF-5F-B2-64-46-EE-3B-C5-8F-9B-0C-25-2C-48-CF-01-15-9A-70-46-06-CC-15-5E-5E-E5-26-CF-AD-6F-B6-CA-03-EA-B1-29-F9-D7-13-87-0F-B4-E3-23-B8-2F-1F-93-FE-99-8F-57-39-80-4F-91-3F-EC-36-44-A8-1F-A3-F8-D8-68-9F-E0-DC-64-E7-32-53-98-35-26-35-BE-2C-11-76-44-8A-40-8E-E5-F3-98-98-0D-9B-B9-3E-08-DD-89-E0-E3-52-70-6C-BE-74-1B-60-7C-AE-60-5C-9C-BE-F0-AF-85-B2-50-8D-44-4E-CE-D6-1A-0D-34-E7-71-31-19-B0-9F-26-3C-82-0A-2C-2C-43-F7-87-CA-F5";
+        var payload = "00-DA-2D-00-CD-7E-42-09-3A-39-8C-E1-F3-18-65-7F-75-67-95-BB-F4-79-2D-B4-2C-43-19-B5-3E-D6-35-45-B2-06-38-82-60-78-1F-3A-47-F4-74-80-58-0A-32-DC-72-A5-DC-62-8B-3E-9A-AA-FA-18-2F-30-24-43-BA-57-CE-2D-45-C2-FE-DC-43-7E-2E-E4-C3-AD-0E-37-5C-0C-24-C2-E8-DE-E2-27-41-A7-AD-BF-58-F9-9D-D7-9D-99-9C-4F-10-D2-EA-50-62-70-8D-B1-4B-9B-40-A9-6A-0F-DF-D2-42-11-EA-03-36-0A-8E-B6-0D-E9-CE-37-BE-4E-68-BC-19-EF-BB-C6-0A-16-3F-6F-E4-85-AC-D1-F7-83-F9-01-E2-1B-66-B0-5F-E2-BA-47-47-BF-E2-88-69-95-86-EE-41-1E-B5-D0-D4-D4-5C-1E-E7-E2-84-D6-11-7D-AD-7B-DD-B1-D5-92-0E-5B-B5-46-DD-29-34-B1-F2-CF-9D-FA-39-A4-FC-05-7C-C1-FF-A1-C8-E1-5A-05-E1-4D-BA-2E-EC-DD-5D-EB-10-F5-59-BA-FB-31-DE-0D-4F-7C-9B-E3-25-81-BE-08-53-C0-F1-02-AC-4D-2E-E7-19-E0-8C-68-49-0A-5D-DF-1D-28-B1-A7-7F-48-94-8D-39-92-4A-1B-4A-DF-8B-97-B5-01-AA-CC-C0-83-41-1B-AA-D2-42-28-BF-51-48-AE-5F-56-D4-4A-2E-4A-AD-14-8C-88-BA-8F-06-D1-62-1C-50-88-85-13-1C-59-48-1A-8C-FB-51-D5-CC-5E-E2-29-1D-F3-19-CE-2A-92-7E-E8-53-6B-2D-4B-51-70-53-1F-0F-5E-AE-8C-D7-72-81-1C-08-1C-0A-B6-B1-7F-8A-29-6E-5F-40-36-24-A9-EA-B0-A1-CC-6A-BE-4E-2C-E2-20-0A-3F-6E-CE-F8-EE-18-7D-5F-DD-5D-B4-0B-F9-1C-A1-5B-9B";
+        var payloadAsBytes = StringToByteArray(payload);
+
+        var messageFrameParts = new MessageFrameParts(payloadAsBytes);
+        var messagePayload = new MessagePayload(messageFrameParts.MessagePayload);
+    }
+
+    [Test]
+    public void MessageDecode3()
+    {
+        var payload = "00-79-21-00-76-D0-33-01-91-23-64-74-2D-9E-98-C0-41-38-EB-85-3F-F6-1A-B9-0C-39-2A-96-FB-52-4A-68-C5-6E";
         var payloadAsBytes = StringToByteArray(payload);
 
         var messageFrameParts = new MessageFrameParts(payloadAsBytes);
@@ -59,7 +69,9 @@ public class MatterTLVTests
 
         var payloadAsBytes = StringToByteArray(encryptedPayload);
 
-        var messageFrame = session.Decode(payloadAsBytes);
+        var messageFrameParts = new MessageFrameParts(payloadAsBytes);
+
+        var messageFrame = session.Decode(messageFrameParts);
 
         Assert.That(messageFrame.MessageFlags, Is.EqualTo(MessageFlags.DSIZ1));
         Assert.That(messageFrame.MessagePayload.ExchangeID, Is.EqualTo(2633));

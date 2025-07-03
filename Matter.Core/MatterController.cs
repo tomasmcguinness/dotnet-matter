@@ -3,6 +3,7 @@ using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Org.BouncyCastle.Math;
+using System.Net;
 
 namespace Matter.Core
 {
@@ -56,9 +57,15 @@ namespace Matter.Core
             // Start the mDNS service to discover nodes.
             //
             //_mDNSService.ServiceDiscovered += (sender, args) =>
+            _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
+            {
+                _mDNSService.SendQuery("_matterc._udp.local");
+                _mDNSService.SendQuery("_matter._tcp.local");
+            };
+
             _mDNSService.AnswerReceived += _mDNSService_AnswerReceived;
-            //_serviceDiscovery.ServiceDiscovered += _serviceDiscovery_ServiceDiscovered;
-            //_serviceDiscovery.ServiceInstanceDiscovered += _serviceDiscovery_ServiceInstanceDiscovered;
+            _serviceDiscovery.ServiceDiscovered += _serviceDiscovery_ServiceDiscovered;
+            _serviceDiscovery.ServiceInstanceDiscovered += _serviceDiscovery_ServiceInstanceDiscovered;
 
             _fabric = await _fabricManager.GetAsync("Test");
             _fabric.NodeAdded += OnNodeAddedToFabric;
@@ -70,16 +77,28 @@ namespace Matter.Core
 
             foreach (var server in servers)
             {
-                //Console.WriteLine($"host '{server.Target}' for '{server.Name}'");
+                var instanceName = server.Name.ToString();
 
-                if (server.Name.ToString().Contains("_matter._tcp.local"))
+                Console.WriteLine($"Processing '{instanceName}'");
+
+                if (instanceName.Contains("_matter._tcp.local"))
                 {
-                    var addresses = e.Message.Answers.OfType<AddressRecord>();
-                    _nodeRegister.AddCommissionedNode(server.Name.ToString().Replace("_matter._tcp.local", ""), server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
+                    Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
+
+                    var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
+
+                    if (!addresses.Any())
+                    {
+                        continue;
+                    }
+
+                    _nodeRegister.AddCommissionedNode(instanceName.Replace("_matter._tcp.local", ""), server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
                 }
-                else if (server.Name.ToString().Contains("_matterc._udp.local"))
+                else if (instanceName.Contains("_matterc._udp.local"))
                 {
-                    var txtRecords = e.Message.Answers.OfType<TXTRecord>();
+                    Console.WriteLine($"Discovered Commissionable Node '{instanceName}'");
+
+                    var txtRecords = e.Message.AdditionalRecords.OfType<TXTRecord>();
 
                     var recordWithDiscriminator = txtRecords.FirstOrDefault(x => x.Strings.Any(y => y.StartsWith("D=")));
 
@@ -91,54 +110,33 @@ namespace Matter.Core
                         discriminator = ushort.Parse(discriminatorString.Substring(2)); // Remove "d=" prefix
                     }
 
-                    var addresses = e.Message.Answers.OfType<AddressRecord>();
+                    var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
 
                     if (discriminator == 0 || !addresses.Any())
                     {
+                        _mDNSService.SendQuery(server.Target, type: DnsType.TXT);
+                        _mDNSService.SendQuery(server.Target, type: DnsType.A);
+                        _mDNSService.SendQuery(server.Target, type: DnsType.AAAA);
                         continue;
                     }
 
-                    _nodeRegister.AddCommissionableNode(server.Name.ToString().Replace("_matterc._tcp.local", ""), discriminator, server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
+                    _nodeRegister.AddCommissionableNode(instanceName.Replace("_matterc._tcp.local", ""), discriminator, server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
                 }
-
-                // Ask for the host IP addresses.
-                //_mDNSService.SendQuery(server.Target, type: DnsType.A);
-                //_mDNSService.SendQuery(server.Target, type: DnsType.AAAA);
             }
-
-            // Is this an answer to host addresses?
-            //var addresses = e.Message.Answers.OfType<AddressRecord>();
-            //foreach (var address in addresses)
-            //{
-            //    Console.WriteLine($"host '{address.Name}' at {address.Address}");
-            //}
         }
 
-        //private void _serviceDiscovery_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs e)
-        //{
-        //    var instanceName = e.ServiceInstanceName.ToString();
+        private void _serviceDiscovery_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs e)
+        {
+            Console.WriteLine($"Service Instance Discovered '{e.ServiceInstanceName}'");
+            _mDNSService.SendQuery(e.ServiceInstanceName, type: DnsType.SRV);
+        }
 
-        //    if (instanceName.Contains("_matter._tcp.local") || instanceName.Contains("_matterc._udp.local"))
-        //    {
-        //        _mDNSService.SendQuery(e.ServiceInstanceName, type: DnsType.SRV);
+        private void _serviceDiscovery_ServiceDiscovered(object? sender, DomainName serviceName)
+        {
+            Console.WriteLine($"Service Discovered '{serviceName}'");
 
-        //        //args.TxtValues.TryGetValue("D", out string? discriminator);
-        //        //_nodeRegister.AddCommissionableNode(args.Name.Replace("_matterc._tcp.local", ""), discriminator, args.Addresses);
-        //    }
-        //}
-
-        //private void _serviceDiscovery_ServiceDiscovered(object? sender, DomainName args)
-        //{
-        //if (args.Contains("_matter._tcp.local"))
-        //{
-        //    _nodeRegister.AddCommissionedNode(args.Name.Replace("_matter._tcp.local", ""), args.Addresses);
-        //}
-        //else if (args.Name.Contains("_matterc._udp.local"))
-        //{
-        //    args.TxtValues.TryGetValue("D", out string? discriminator);
-        //    _nodeRegister.AddCommissionableNode(args.Name.Replace("_matterc._tcp.local", ""), discriminator, args.Addresses);
-        //}
-        //}
+            //_mDNSService.SendQuery(serviceName, type: DnsType.PTR);
+        }
 
         public async Task RunAsync()
         {
@@ -151,8 +149,6 @@ namespace Matter.Core
             //
             //_mDNSService.Perform(new ServiceDiscovery("_matter._tcp.local.", "_matterc._udp.local."));
             _mDNSService.Start();
-            _mDNSService.SendQuery("_matterc._tcp.local");
-            _mDNSService.SendQuery("_matter._tcp.local");
 
             // Reconnect to the nodes we have already commissioned.
             //

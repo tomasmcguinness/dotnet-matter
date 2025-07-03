@@ -47,6 +47,8 @@ namespace Matter.Core.Sessions
 
         public ushort SessionId { get; }
 
+        public ushort PeerSessionId { get; }
+
         public bool UseMRP => true;
 
         public MessageExchange CreateExchange()
@@ -117,13 +119,11 @@ namespace Matter.Core.Sessions
             return parts.Header.Concat(totalPayload).ToArray();
         }
 
-        public MessageFrame Decode(byte[] payload)
+        public MessageFrame Decode(MessageFrameParts parts)
         {
             // Run this through the decoder. We need to start reading the bytes until we 
             // get to the payload. We then need to decrypt the payload.
             //
-            var parts = new MessageFrameParts(payload);
-
             //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
             //Console.WriteLine("Incoming Encrypted MessagePayload: {0}", BitConverter.ToString(parts.MessagePayload));
 

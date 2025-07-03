@@ -1,5 +1,4 @@
 ﻿using Matter.Core.Sessions;
-using System.Diagnostics;
 using System.Threading.Channels;
 
 namespace Matter.Core
@@ -33,14 +32,14 @@ namespace Matter.Core
             _cancellationTokenSource.Cancel();
             _readingThread.Join();
 
-            Console.WriteLine("Closed MessageExchange {0}", _exchangeId);
+            Console.WriteLine("Closed MessageExchange [E: {0}]", _exchangeId);
         }
 
         public async Task SendAsync(MessageFrame message)
         {
             // Set the common data on the MessageFrame.
             //
-            message.SessionID = _session.SessionId;
+            message.SessionID = _session.PeerSessionId;
             message.SourceNodeID = _session.SourceNodeId;
             message.DestinationNodeId = _session.DestinationNodeId;
             message.MessagePayload.ExchangeID = _exchangeId;
@@ -78,6 +77,10 @@ namespace Matter.Core
             return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
         }
 
+        /// <summary>
+        /// This is a message pump. It waits for data to be available and passes it to 
+        /// the _incomingMessageChannel
+        /// </summary>
         private async void ReceiveAsync()
         {
             do
@@ -88,7 +91,17 @@ namespace Matter.Core
                 {
                     bytes = await _session.ReadAsync();
 
-                    var messageFrame = _session.Decode(bytes);
+                    var messageFrameParts = new MessageFrameParts(bytes);
+
+                    var messageFrameWithHeader = messageFrameParts.MessageFrameWithHeaders();
+
+                    if (messageFrameWithHeader.SessionID != _session.SessionId)
+                    {
+                        Console.WriteLine("[E: {0}] Message {1} [S: {2}] is not for this session {3}. Ignoring...", _exchangeId, messageFrameWithHeader.MessageCounter, messageFrameWithHeader.SessionID, _session.SessionId);
+                        continue;
+                    }
+
+                    var messageFrame = _session.Decode(messageFrameParts);
 
                     Console.WriteLine("\n<<< Received Message {0}", messageFrame.DebugInfo());
 
@@ -96,7 +109,7 @@ namespace Matter.Core
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
                     {
                         Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
-                        return;
+                        continue;
                     }
 
                     _receivedMessageCounter = messageFrame.MessageCounter;
@@ -106,7 +119,7 @@ namespace Matter.Core
                     if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
                     {
                         Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
-                        return;
+                        continue;
                     }
 
                     // This message needs processing, so put it onto the queue.

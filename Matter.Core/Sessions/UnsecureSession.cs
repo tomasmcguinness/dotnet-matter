@@ -9,7 +9,8 @@ namespace Matter.Core.Sessions
         public UnsecureSession(IConnection connection)
         {
             _connection = connection;
-            SessionId = 0;
+            SessionId = 0x00;
+            PeerSessionId = 0x00;
         }
 
         public IConnection Connection => _connection;
@@ -23,14 +24,16 @@ namespace Matter.Core.Sessions
 
         public ulong DestinationNodeId { get; } = 0x00;
 
+        public ushort SessionId { get; set; }
+
+        public ushort PeerSessionId { get; }
+
+        public bool UseMRP => false;
+
         public void Close()
         {
             _connection.Close();
         }
-
-        public ushort SessionId { get; set; }
-
-        public bool UseMRP => false;
 
         public MessageExchange CreateExchange()
         {
@@ -71,11 +74,10 @@ namespace Matter.Core.Sessions
             return parts.Header.Concat(parts.MessagePayload).ToArray();
         }
 
-        public MessageFrame Decode(byte[] payload)
+        public MessageFrame Decode(MessageFrameParts parts)
         {
-            var messageParts = new MessageFrameParts(payload);
-            var messageFrame = messageParts.MessageFrameWithHeaders();
-            messageFrame.MessagePayload = new MessagePayload(messageParts.MessagePayload);
+            var messageFrame = parts.MessageFrameWithHeaders();
+            messageFrame.MessagePayload = new MessagePayload(parts.MessagePayload);
             return messageFrame;
         }
     }

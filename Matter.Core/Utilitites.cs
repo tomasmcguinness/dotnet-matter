@@ -22,13 +22,13 @@ namespace Matter.Core
         public static string DebugInfo(this MessageFrame message)
         {
             var (protocolName, protocolOpName) = GetFriendlyNames(message.MessagePayload);
-            return string.Format("{0} | {1} | {2} | ack:{3}", message.MessageCounter, protocolName, protocolOpName, message.MessagePayload.AcknowledgedMessageCounter);
+            return string.Format("[S: {0}] {1} | {2} | {3} | ack:{4}", message.SessionID, message.MessageCounter, protocolName, protocolOpName, message.MessagePayload.AcknowledgedMessageCounter);
         }
 
         public static string DebugInfo(this MessagePayload message)
         {
             var (protocolName, protocolOpName) = GetFriendlyNames(message);
-            return string.Format("{0} | {1} | {2} | {3}", message.ExchangeFlags, message.ExchangeID, protocolName, protocolOpName);
+            return string.Format("[E: {0}] {1} | {2} | {3} | {4}", message.ExchangeID, message.ExchangeFlags, message.ExchangeID, protocolName, protocolOpName);
         }
 
         private static (string protocolId, string protocolOpCode) GetFriendlyNames(MessagePayload messagePayload)

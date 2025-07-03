@@ -1,4 +1,5 @@
 ﻿using Matter.Core;
+using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
 
 Console.WriteLine("dotnet-matter >> Console Application");
@@ -10,9 +11,12 @@ await controller.InitAsync();
 
 //Console.WriteLine("Attempting to commission a Matter device");
 
-//ICommissioner commissioner = await controller.CreateCommissionerAsync();
+var manualPairingCode = args[0];
 
-//await commissioner.CommissionNodeAsync(3840);
+var commissioningPayload = CommissioningPayloadHelper.ParseManualSetupCode(manualPairingCode);
+
+ICommissioner commissioner = await controller.CreateCommissionerAsync();
+await commissioner.CommissionNodeAsync(commissioningPayload);
 
 //Console.WriteLine("Commissioning done (timed out or worked)");
 

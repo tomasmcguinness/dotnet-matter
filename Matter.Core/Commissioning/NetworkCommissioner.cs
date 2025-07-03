@@ -80,6 +80,8 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine("| COMMISSIONING STEP 6 - Establish PASE         |");
                 Console.WriteLine("└───────────────────────────────────────────────┘");
 
+                var paseInitatorSessionId = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(16));
+
                 var PBKDFParamRequest = new MatterTLV();
                 PBKDFParamRequest.AddStructure();
 
@@ -87,7 +89,7 @@ namespace Matter.Core.Commissioning
                 //
                 var initiatorRandomBytes = RandomNumberGenerator.GetBytes(32);
                 PBKDFParamRequest.AddOctetString(1, initiatorRandomBytes);
-                PBKDFParamRequest.AddUInt16(2, (ushort)Random.Shared.Next(1, ushort.MaxValue));
+                PBKDFParamRequest.AddUInt16(2, paseInitatorSessionId);
                 PBKDFParamRequest.AddUInt16(3, 0);
                 PBKDFParamRequest.AddBool(4, false);
                 PBKDFParamRequest.EndContainer();
@@ -340,9 +342,13 @@ namespace Matter.Core.Commissioning
                 Console.WriteLine(format: "| PeerSessionId: {0} |", peerSessionId);
                 Console.WriteLine("└──────────────────────┘");
 
+                // Close the unsecure exchange.
+                //
+                unsecureExchange.Close();
+
                 // Create a PASE session
                 //
-                var paseSession = new PaseSecureSession(udpConnection, peerSessionId, encryptKey, decryptKey);
+                var paseSession = new PaseSecureSession(udpConnection, paseInitatorSessionId, peerSessionId, encryptKey, decryptKey);
 
                 // We then create a new Exchange using the secure session.
                 //
@@ -1180,6 +1186,8 @@ namespace Matter.Core.Commissioning
             {
                 return;
             }
+
+            Console.Write($"Found node {nodeDetails.NodeName}");
 
             // How do you decide which address??
             //

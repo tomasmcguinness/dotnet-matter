@@ -33,6 +33,7 @@ namespace Matter.Core
             {
                 _udpClient = new UdpClient(AddressFamily.InterNetworkV6);
             }
+
             _udpClient.Connect(address, port);
 
             Task.Factory.StartNew(ProcessIncomingData);

@@ -11,7 +11,7 @@ namespace Matter.Core
 
         public void AddCommissionableNode(string nodeIdAndCompressedFabricIdentifier, ushort discriminator, ushort port, string[] addresses)
         {
-            _commissionalbleNodes.AddOrUpdate(nodeIdAndCompressedFabricIdentifier, new NodeRegisterDetails(discriminator, port, addresses), (key, oldValue) => new NodeRegisterDetails(discriminator, port, addresses));
+            _commissionalbleNodes.AddOrUpdate(nodeIdAndCompressedFabricIdentifier, new NodeRegisterDetails(nodeIdAndCompressedFabricIdentifier, discriminator, port, addresses), (key, oldValue) => new NodeRegisterDetails(nodeIdAndCompressedFabricIdentifier, discriminator, port, addresses));
 
             CommissionableNodeDiscoveredEvent(this, new CommissionableNodeDiscoveredEventArgs(nodeIdAndCompressedFabricIdentifier));
         }
