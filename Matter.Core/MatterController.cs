@@ -98,7 +98,7 @@ namespace Matter.Core
                 {
                     Console.WriteLine($"Discovered Commissionable Node '{instanceName}'");
 
-                    var txtRecords = e.Message.AdditionalRecords.OfType<TXTRecord>();
+                    var txtRecords = e.Message.AdditionalRecords.OfType<TXTRecord>().Union(e.Message.Answers.OfType<TXTRecord>());
 
                     var recordWithDiscriminator = txtRecords.FirstOrDefault(x => x.Strings.Any(y => y.StartsWith("D=")));
 
@@ -110,17 +110,15 @@ namespace Matter.Core
                         discriminator = ushort.Parse(discriminatorString.Substring(2)); // Remove "d=" prefix
                     }
 
-                    var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
+                    var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>().Union(e.Message.Answers.OfType<AddressRecord>())    ;
 
                     if (discriminator == 0 || !addresses.Any())
                     {
-                        _mDNSService.SendQuery(server.Target, type: DnsType.TXT);
-                        _mDNSService.SendQuery(server.Target, type: DnsType.A);
-                        _mDNSService.SendQuery(server.Target, type: DnsType.AAAA);
+                        Console.WriteLine($"Commissionable Node '{instanceName}' is missing data.");
                         continue;
                     }
 
-                    _nodeRegister.AddCommissionableNode(instanceName.Replace("_matterc._tcp.local", ""), discriminator, server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
+                    _nodeRegister.AddCommissionableNode(instanceName.Replace("_matterc._udp.local", ""), discriminator, server.Port, addresses.Select(a => a.Address.ToString()).ToArray());
                 }
             }
         }
