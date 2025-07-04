@@ -83,7 +83,7 @@ namespace Matter.Core
 
                 if (instanceName.Contains("_matter._tcp.local"))
                 {
-                    Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
+                    //Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
 
                     var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
 
@@ -96,7 +96,7 @@ namespace Matter.Core
                 }
                 else if (instanceName.Contains("_matterc._udp.local"))
                 {
-                    Console.WriteLine($"Discovered Commissionable Node '{instanceName}'");
+                    //Console.WriteLine($"Discovered Commissionable Node '{instanceName}'");
 
                     var txtRecords = e.Message.AdditionalRecords.OfType<TXTRecord>().Union(e.Message.Answers.OfType<TXTRecord>());
 
@@ -114,7 +114,10 @@ namespace Matter.Core
 
                     if (discriminator == 0 || !addresses.Any())
                     {
-                        Console.WriteLine($"Commissionable Node '{instanceName}' is missing data.");
+                        Console.WriteLine($"Commissionable Node '{instanceName}' is missing data. Requesting more...");
+                        _mDNSService.SendQuery(server.Target, type: DnsType.A);
+                        _mDNSService.SendQuery(server.Target, type: DnsType.AAAA);
+                        _mDNSService.SendQuery(server.Target, type: DnsType.TXT);
                         continue;
                     }
 
@@ -132,8 +135,7 @@ namespace Matter.Core
         private void _serviceDiscovery_ServiceDiscovered(object? sender, DomainName serviceName)
         {
             //Console.WriteLine($"Service Discovered '{serviceName}'");
-
-            //_mDNSService.SendQuery(serviceName, type: DnsType.PTR);
+            _mDNSService.SendQuery(serviceName, type: DnsType.PTR);
         }
 
         public async Task RunAsync()

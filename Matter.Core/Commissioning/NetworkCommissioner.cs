@@ -1,4 +1,5 @@
-﻿using Matter.Core.Cryptography;
+﻿using Makaretu.Dns.Resolving;
+using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
@@ -139,6 +140,11 @@ namespace Matter.Core.Commissioning
                 //    responseMessageFrame.MessagePayload.ProtocolId
                 //);
 
+                if (MessageFrame.IsStatusReport(responseMessageFrame))
+                {
+                    return;
+                }
+
                 // We have to walk the response.
                 //
                 var PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
@@ -270,6 +276,8 @@ namespace Matter.Core.Commissioning
                     throw new Exception("Verifier doesn't match!");
                 }
 
+                Console.WriteLine("Ke: {0}", BitConverter.ToString(Ke));
+
                 var pake3 = new MatterTLV();
                 pake3.AddStructure();
 
@@ -315,7 +323,7 @@ namespace Matter.Core.Commissioning
                 //
                 // We keep the same UDP Connection but this time we will be encrypting the data.
                 //
-                // Ke is our shared secret.
+                // Ke is the shared secret.
                 //
                 byte[] info = Encoding.ASCII.GetBytes("SessionKeys");
 
@@ -560,7 +568,14 @@ namespace Matter.Core.Commissioning
 
                 subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.1")); // NodeId
                 subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.5")); // FabricId
-                subjectValues.Add("ABABABAB00010001");
+
+                var t = state.Node.NodeId.ToByteArrayUnsigned();
+                t.Reverse();
+                var s1 = BitConverter.ToString(t).Replace("-", "");
+                subjectValues.Add(s1);
+                //subjectValues.Add("ABABABAB00010001"); // TODO This is wrong.
+
+
                 subjectValues.Add("FAB000000000001D");
 
                 X509Name subjectDN = new X509Name(subjectOids, subjectValues);
@@ -577,7 +592,7 @@ namespace Matter.Core.Commissioning
 
                 certGenerator.SetIssuerDN(issuerDN); // The root certificate is the issuer.
 
-                certGenerator.SetNotBefore(DateTime.UtcNow.AddDays(-1));
+                certGenerator.SetNotBefore(DateTime.UtcNow.AddYears(-10));
                 certGenerator.SetNotAfter(DateTime.UtcNow.AddYears(10));
 
                 certGenerator.SetPublicKey(certificateRequest.GetPublicKey() as ECPublicKeyParameters);
@@ -733,9 +748,6 @@ namespace Matter.Core.Commissioning
                 addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
 
                 addTrustedRootCertificateRequest.EndContainer(); // Close the structure
-
-
-
 
                 var addTrustedRootCertificateRequestMessagePayload = new MessagePayload(addTrustedRootCertificateRequest);
 
@@ -918,6 +930,8 @@ namespace Matter.Core.Commissioning
                 var caseClient = new CASEClient(state.Node, _fabric, unsecureSession);
 
                 var caseSession = await caseClient.EstablishSessionAsync();
+
+                caseExchange.Close();
 
                 #endregion
 
@@ -1178,6 +1192,8 @@ namespace Matter.Core.Commissioning
             //
             var nodeToCommission = _fabric.CreateNode();
 
+            byte[] bytes = nodeToCommission.NodeId.ToByteArrayUnsigned();
+
             // Look at the NodeRegistry.
             //
             var nodeDetails = await _nodeRegister.GetCommissionableNodeForDiscriminatorAsync(commissioningPayload.Discriminator);
@@ -1187,7 +1203,7 @@ namespace Matter.Core.Commissioning
                 return;
             }
 
-            Console.Write($"Found node {nodeDetails.NodeName}");
+            Console.WriteLine($"Found node {nodeDetails.NodeName}");
 
             // How do you decide which address??
             //
@@ -1196,6 +1212,8 @@ namespace Matter.Core.Commissioning
             // Where do I find the port number???
             //
             System.Net.IPAddress address = System.Net.IPAddress.Parse(firstAddress);
+
+            Console.WriteLine($"Selected address: {address}");
 
             // Run the commissioning in a thread and run that task in a thread.
             //

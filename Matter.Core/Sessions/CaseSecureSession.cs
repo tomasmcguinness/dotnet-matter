@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 
 namespace Matter.Core.Sessions
 {
@@ -7,6 +8,7 @@ namespace Matter.Core.Sessions
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
+        private uint _messageCounter = 0;
 
         public CaseSecureSession(IConnection connection,
                                  ulong sourceNodeId,
@@ -25,6 +27,8 @@ namespace Matter.Core.Sessions
 
             SessionId = sessionId;
             PeerSessionId = peerSessionId;
+
+            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
 
             Console.WriteLine($"Created CASE Secure Session: {SessionId}");
         }
@@ -51,6 +55,8 @@ namespace Matter.Core.Sessions
 
         public bool UseMRP => true;
 
+        public uint MessageCounter => _messageCounter++;
+
         public MessageExchange CreateExchange()
         {
             // We're going to Exchange messages in this session, so we need an MessageExchange 
@@ -74,9 +80,9 @@ namespace Matter.Core.Sessions
             await _connection.SendAsync(message);
         }
 
-        public async Task<byte[]> ReadAsync()
+        public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _connection.ReadAsync();
+            return await _connection.ReadAsync(token);
         }
 
         public byte[] Encode(MessageFrame messageFrame)

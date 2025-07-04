@@ -6,9 +6,13 @@ namespace Matter.Core.Sessions
     {
         private IConnection _connection;
 
+        private static uint _messageCounter = 0;
+
         public UnsecureSession(IConnection connection)
         {
             _connection = connection;
+            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
+
             SessionId = 0x00;
             PeerSessionId = 0x00;
         }
@@ -29,6 +33,8 @@ namespace Matter.Core.Sessions
         public ushort PeerSessionId { get; }
 
         public bool UseMRP => false;
+
+        public uint MessageCounter => _messageCounter++;
 
         public void Close()
         {
@@ -63,9 +69,9 @@ namespace Matter.Core.Sessions
             await _connection.SendAsync(message);
         }
 
-        public async Task<byte[]> ReadAsync()
+        public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _connection.ReadAsync();
+            return await _connection.ReadAsync(token);
         }
 
         public byte[] Encode(MessageFrame messageFrame)

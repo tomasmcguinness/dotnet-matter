@@ -14,13 +14,15 @@
 
         bool UseMRP { get; }
 
+        uint MessageCounter { get; }
+
         MessageExchange CreateExchange();
 
         byte[] Encode(MessageFrame message);
 
         MessageFrame Decode(MessageFrameParts messageFrameParts);
 
-        Task<byte[]> ReadAsync();
+        Task<byte[]> ReadAsync(CancellationToken token);
 
         Task SendAsync(byte[] payload);
 

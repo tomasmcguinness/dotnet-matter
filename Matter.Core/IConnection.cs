@@ -9,7 +9,7 @@ namespace Matter.Core
 
         IConnection OpenConnection();
 
-        Task<byte[]> ReadAsync();
+        Task<byte[]> ReadAsync(CancellationToken token);
 
         Task SendAsync(byte[] message);
     }

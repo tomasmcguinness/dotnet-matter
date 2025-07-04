@@ -132,7 +132,7 @@ namespace Matter.Core.Fabrics
 
         internal Node CreateNode()
         {
-            var nodeIdBytes = RandomNumberGenerator.GetBytes(32);
+            var nodeIdBytes = RandomNumberGenerator.GetBytes(8);
             var nodeId = new BigInteger(nodeIdBytes, false);
 
             return new Node()

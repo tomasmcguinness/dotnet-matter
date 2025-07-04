@@ -9,6 +9,7 @@ namespace Matter.Core.Sessions
         private readonly byte[] _decryptionKey;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
+        private uint _messageCounter = 0;
 
         public PaseSecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
@@ -18,6 +19,8 @@ namespace Matter.Core.Sessions
 
             SessionId = sessionId;
             PeerSessionId = peerSessionId;
+
+            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
 
             Console.WriteLine($"Created PASE Secure Session: {SessionId}, PeerSessionId: {PeerSessionId}");
         }
@@ -37,13 +40,15 @@ namespace Matter.Core.Sessions
 
         public ushort PeerSessionId { get; }
 
+        public bool UseMRP => true;
+
+        public uint MessageCounter => _messageCounter++;
+
         public void Close()
         {
             _cancellationTokenSource.Cancel();
             _connection.Close();
         }
-
-        public bool UseMRP => true;
 
         public MessageExchange CreateExchange()
         {
@@ -67,9 +72,9 @@ namespace Matter.Core.Sessions
             await _connection.SendAsync(message);
         }
 
-        public async Task<byte[]> ReadAsync()
+        public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _connection.ReadAsync();
+            return await _connection.ReadAsync(token);
         }
 
         public byte[] Encode(MessageFrame messageFrame)
@@ -122,7 +127,7 @@ namespace Matter.Core.Sessions
 
             var messageFrame = parts.MessageFrameWithHeaders();
 
-            Console.WriteLine("Decrypting MessagePayload...");
+            Console.WriteLine("Decrypting MessagePayload [M: {0}, S: {1}] ...", messageFrame.MessageCounter, messageFrame.SessionID);
 
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
@@ -140,7 +145,6 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
             additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var additionalData = memoryStream.ToArray();
 
@@ -149,17 +153,25 @@ namespace Matter.Core.Sessions
 
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 
-            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
             var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
+            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
 
-            var encryptor = new AesCcm(_decryptionKey);
-            encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+            try
+            {
+                var encryptor = new AesCcm(_decryptionKey);
+                encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
 
-            //Console.WriteLine("Decrypted MessagePayload: {0}", BitConverter.ToString(decryptedPayload));
+                //Console.WriteLine("Decrypted MessagePayload: {0}", BitConverter.ToString(decryptedPayload));
 
-            messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
+                messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 
-            return messageFrame;
+                return messageFrame;
+            }
+            catch (Exception exp)
+            {
+                Console.WriteLine("Decryption failed - {0}", exp.Message);
+                throw;
+            }
         }
     }
 }

@@ -76,9 +76,9 @@ namespace Matter.Core
             }
         }
 
-        public async Task<byte[]> ReadAsync()
+        public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _receivedDataChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
+            return await _receivedDataChannel.Reader.ReadAsync(token);
         }
 
         public async Task SendAsync(byte[] bytes)

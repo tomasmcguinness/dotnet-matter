@@ -43,7 +43,7 @@ namespace Matter.Core
             message.SourceNodeID = _session.SourceNodeId;
             message.DestinationNodeId = _session.DestinationNodeId;
             message.MessagePayload.ExchangeID = _exchangeId;
-            message.MessageCounter = GlobalCounter.Counter;
+            message.MessageCounter = _session.MessageCounter;
 
             uint? messageToAck = null;
 
@@ -89,7 +89,7 @@ namespace Matter.Core
 
                 try
                 {
-                    bytes = await _session.ReadAsync();
+                    bytes = await _session.ReadAsync(_cancellationTokenSource.Token);
 
                     var messageFrameParts = new MessageFrameParts(bytes);
 
@@ -154,7 +154,7 @@ namespace Matter.Core
             messageFrame.SecurityFlags = 0x00;
             messageFrame.SessionID = _session.SessionId;
             messageFrame.SourceNodeID = _session.SourceNodeId;
-            messageFrame.MessageCounter = GlobalCounter.Counter;
+            messageFrame.MessageCounter = _session.MessageCounter;
 
             await SendAsync(messageFrame);
         }

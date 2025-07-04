@@ -8,7 +8,6 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
@@ -49,9 +48,10 @@ namespace Matter.Core.Sessions
             var ephermeralPrivateKey = ephermeralKeys.Private as ECPrivateKeyParameters;
             var ephermeralPublicKeysBytes = ephermeralPublicKey.Q.GetEncoded(false);
 
-            //Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(rootPublicKeyBytes).Replace("-", ""));
-            //Console.WriteLine("NocPublicKeyBytes: {0}", BitConverter.ToString(nocPublicKeyBytes).Replace("-", ""));
-            //Console.WriteLine("EphermeralKeysBytes: {0}", BitConverter.ToString(ephermeralKeysBytes).Replace("-", ""));
+            Console.WriteLine("spake1InitiatorRandomBytes: {0}", BitConverter.ToString(spake1InitiatorRandomBytes));
+            Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(_fabric.RootPublicKeyBytes));
+            Console.WriteLine("FabricId: {0}", BitConverter.ToUInt64(_fabric.FabricId.ToByteArrayUnsigned()));
+            Console.WriteLine("NodeId: {0}", BitConverter.ToUInt64(_node.NodeId.ToByteArrayUnsigned()));
 
             // Destination identifier is a composite.
             //
@@ -64,8 +64,12 @@ namespace Matter.Core.Sessions
 
             var destinationId = ms.ToArray();
 
+            Console.WriteLine("DestinationId: {0}", BitConverter.ToString(destinationId));
+
             var hmac = new HMACSHA256(_fabric.OperationalIPK);
             byte[] hashedDestinationId = hmac.ComputeHash(destinationId);
+
+            Console.WriteLine("Hashed DestinationId: {0}", BitConverter.ToString(hashedDestinationId));
 
             var sigma1Payload = new MatterTLV();
             sigma1Payload.AddStructure();
@@ -92,11 +96,11 @@ namespace Matter.Core.Sessions
 
             await caseExchange.SendAsync(sigma1MessageFrame);
 
+            var sigma2MessageFrame = await caseExchange.WaitForNextMessageAsync();
+
             Console.WriteLine("┌───────────────────────┐");
             Console.WriteLine("| SENDING CASE - Sigma2 |");
             Console.WriteLine("└───────────────────────┘");
-
-            var sigma2MessageFrame = await caseExchange.WaitForNextMessageAsync();
 
             var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
 
